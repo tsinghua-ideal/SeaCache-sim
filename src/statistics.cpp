@@ -25,25 +25,25 @@ long long AccessByte = 0;
 
 void analyze_statistics() {
 
-  printf("total cycle = %lld\nload cycle = %lld, multiply cycle = %lld, "
-         "merge and writeback cycle = %lld \n",
-         totalCycle, preCycle, calCycle, postCycle);
-  printf("total SRAM cycle = %lld, total DRAM cycle = %lld, total PE cycle = "
-         "%lld\n",
-         totalSram, totalDram, totalPE);
-  printf("DRAM access A during multiply = %lld, "
-         "DRAM access B during multiply = %lld, "
-         "DRAM access C during multiply = %lld\n"
-         "DRAM access A during load = %lld, "
-         "DRAM access B during load = %lld, "
-         "DRAM access C during merge and writeback = %lld\n",
-         computeA / PEcnt, computeB / PEcnt, computeC / PEcnt, preA, preB,
-         postC / PEcnt);
-  totalA = computeA / PEcnt + preA;
-  totalB = computeB / PEcnt + preB;
-  totalC = computeC / PEcnt + postC / PEcnt;
-  printf("total DRAM access A = %lld, total DRAM access B = %lld, "
-         "total DRAM access C = %lld \n",
-         totalA, totalB, totalC);
-  printf("hitrate = %lf  \n", (totalhit) / ((double)totalaccess));
+    printf("total cycle = %lld\nload cycle = %lld, multiply cycle = %lld, "
+           "merge and writeback cycle = %lld \n",
+           totalCycle, preCycle, calCycle, postCycle);
+    printf("total SRAM cycle = %lld, total DRAM cycle = %lld, total PE cycle = "
+           "%lld\n",
+           totalSram, totalDram, totalPE);
+    printf("DRAM access A during multiply = %lld, "
+           "DRAM access B during multiply = %lld, "
+           "DRAM access C during multiply = %lld\n"
+           "DRAM access A during load = %lld, "
+           "DRAM access B during load = %lld, "
+           "DRAM access C during merge and writeback = %lld\n",
+           computeA / PEcnt, computeB / PEcnt, computeC / PEcnt, preA, preB,
+           postC / PEcnt);
+    totalA = computeA / PEcnt + preA;
+    totalB = computeB / PEcnt + preB;
+    totalC = computeC / PEcnt + postC / PEcnt;
+    printf("total DRAM access A = %lld, total DRAM access B = %lld, "
+           "total DRAM access C = %lld \n",
+           totalA, totalB, totalC);
+    printf("hitrate = %lf  \n", (totalhit) / ((f64)totalaccess));
 }

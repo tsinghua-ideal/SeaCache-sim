@@ -5,37 +5,27 @@
 #include <string>
 using namespace std;
 
-// smaple parameter p
-extern double samplep;
-// sample parameter k
-extern double samplek;
-
-extern int I, J, K;
-
-extern int tti, ttj, ttk;
-extern int iii, jjj, kkk;
-
 enum DataFlow {
-  Inner, // 0
-  Outer, // 1
-  Gust   // 2
+    Inner, // 0
+    Outer, // 1
+    Gust   // 2
 };
 
 enum InterOrder {
-  IJK, // 0
-  IKJ, // 1
-  JKI, // 2
-  JIK, // 3
-  KIJ, // 4
-  KJI  // 5
+    IJK, // 0
+    IKJ, // 1
+    JKI, // 2
+    JIK, // 3
+    KIJ, // 4
+    KJI  // 5
 };
 
 enum Format {
-  RR, // 0
-  RC, // 1
-  CR, // 2
-  CC, // 3
-  BB  // 4
+    RR, // 0
+    RC, // 1
+    CR, // 2
+    CC, // 3
+    BB  // 4
 };
 
 extern string printInterOrder[10];
@@ -45,9 +35,9 @@ extern string printFormat[10];
 extern int blockformat;
 extern int BSRsize;
 
-extern InterOrder interorder;
-extern DataFlow dataflow;
-extern Format format;
+const enum InterOrder interorder= IJK;
+const enum DataFlow dataflow    = Gust;
+const enum Format format        = RR;
 
 extern int Asize;
 extern int Bsize;

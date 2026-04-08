@@ -1,23 +1,33 @@
 #include "data.h"
 #include <fstream>
+#include <iostream>
 #include <sstream>
 #include <string>
 
-int N, M, nzA, nzB;
+#include "headers.h"
 
-std::vector<int> A[MAXN], Ac[MAXN], B[MAXN], Bc[MAXN];
 
-std::vector<int> sparchA[MAXN], sparchAi[MAXN];
+Coord **A   = NULL;  // A[r]  = [c_1, c_2, ..., c_u] are non-zero column indices in row r
+Coord **Ac  = NULL; // Ac[c] = [r_1, r_2, ..., r_v] are non-zero row indices in column c
+Coord **B   = NULL;
+Coord **Bc  = NULL;
 
-int offsetarrayA[MAXN], offsetarrayAc[MAXN];
-int offsetarrayB[MAXN], offsetarrayBc[MAXN];
+std::vector<int> *sparchA   = nullptr;
 
-int SI, SK;
-std::vector<int> SA[MAXN];
-std::vector<int> SAc[MAXN];
-std::vector<int> SBc[MAXN];
-std::vector<int> SB[MAXN];
-int SAindex[MAXN], SBcindex[MAXN];
+Coord *offsetarrayA     = nullptr;
+Coord *offsetarrayAc    = nullptr;
+Coord *offsetarrayB     = nullptr;
+Coord *offsetarrayBc        = nullptr;
 
-extern double ha1, hb1;
-extern double ha2, hb2;
+// Let row r be sampled from A, and it is the (r')th sampled row.
+// Then for all indices [(r,c_1), (r,c_2), ..., (r,c_u)] in the row:
+// std::vector<Coord> *SA = nullptr;  //  SA[r']  = [c_1, c_2, ..., c_u]
+// std::vector<Coord> *SAc = nullptr; //  SAc[c]  = [hash1(r, ...)] x u (list of u copies of same hash)
+
+// Let col c be sampled from B, and it is the (c')th sampled row.
+// Then for all indices [(r_1,c), (r_2,c), ..., (r_v,c)] in the col:
+// std::vector<Coord> *SBc = nullptr; // SBc[c']  = [r_1, r_2, ..., r_v]
+// std::vector<Coord> *SB = nullptr;  // SB[r]    = [hash2(c, ...)] x v (list of v copies of same hash)
+
+extern f64 ha1, hb1;
+extern f64 ha2, hb2;
