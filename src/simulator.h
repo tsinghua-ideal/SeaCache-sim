@@ -22,10 +22,13 @@ int getkbound();
 int getjbound();
 int getibound();
 
-extern int currsizeB[MAXN];
-extern int currsizeBc[MAXN];
-extern int beginB[MAXN];
+extern int *currsizeB;
+extern int *currsizeBc;
+extern int *beginB;
 
 extern int TI, TJ, TK;
+
+void initialize_simulator();
+void deinitialize_simulator();
 
 #endif

@@ -1,0 +1,17 @@
+{
+  "name": "step3_fullscore_test",
+  "sketch_shape": [
+    256,
+    4096
+  ],
+  "dense_shape": [
+    4096,
+    128
+  ],
+  "elem_size": 4,
+  "base_addr": 0,
+  "layout": "row-major",
+  "repeat_by_nnz": true,
+  "num_trace_entries": 524288,
+  "sketch_path": "generated_sketch_matrices/step2_test/matrix_csc.npz"
+}

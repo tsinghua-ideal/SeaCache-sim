@@ -1,0 +1,9 @@
+{
+  "workload": "pointer_chasing",
+  "num_nodes": 4096,
+  "num_steps": 20000,
+  "elem_size": 8,
+  "base_addr": 0,
+  "seed": 0,
+  "name": "pointer_test"
+}

@@ -1,11 +1,13 @@
 #include "parameters.h"
 
 // smaple parameter p
-double samplep = 0.01;
+double samplep = 0.01; // sampling probability
 // sample parameter k
 double samplek = 100;
 
-int I, J, K;
+int I; // num rows in A
+int J; // num rows in A, equiv. num cols in B
+int K; // num cols in B
 
 int tti = 1, ttk = 1, ttj = 1;
 // block size
@@ -17,9 +19,9 @@ InterOrder interorder;
 DataFlow dataflow;
 Format format;
 
-string printInterOrder[10] = {"IJK", "IKJ", "JKI", "JIK", "KIJ", "KJI"};
-string printDataFlow[10] = {"Inner", "Outer", "Gust"};
-string printFormat[10] = {"RR", "RC", "CR", "CC", "BB"};
+string printInterOrder[] = {"IJK", "IKJ", "JKI", "JIK", "KIJ", "KJI"};
+string printDataFlow[] = {"Inner", "Outer", "Gust"};
+string printFormat[] = {"RR", "RC", "CR", "CC", "BB"};
 
 int Asize;
 int Bsize;

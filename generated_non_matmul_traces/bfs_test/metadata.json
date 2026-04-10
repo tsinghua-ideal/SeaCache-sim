@@ -1,0 +1,11 @@
+{
+  "workload": "bfs",
+  "num_nodes": 4096,
+  "avg_degree": 4,
+  "max_visits": 20000,
+  "elem_size": 8,
+  "node_base": 0,
+  "edge_base": 16777216,
+  "seed": 0,
+  "name": "bfs_test"
+}

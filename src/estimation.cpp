@@ -1,7 +1,12 @@
 #include "headers.h"
 #include "util.h"
 
-int SIcnt, SKcnt, SAnnz, SBnnz;
+#include <memory>
+
+int SIcnt; // num sampled rows in A
+int SKcnt; // num sampled cols in B
+int SAnnz;
+int SBnnz;
 
 const int pmod = 1000000007; // A large prime number
 
@@ -15,10 +20,10 @@ void initsample() {
 
 void sampleA() {
   // work on the sample
-  for (int i = 0; i <= I; i++) {
+  for (int i = 0; i < I; i++) {
     // Be the sampled row in probability p
     if (sampleP()) {
-      for (int j = 0; j < A[i].size(); j++) {
+      for (std::size_t j = 0; j < A[i].size(); j++) {
         SA[SIcnt].push_back(A[i][j]);
         // directly push back the h1(x)!
         SAc[A[i][j]].push_back(hash1(i, ha1, hb1, pmod));
@@ -32,10 +37,10 @@ void sampleA() {
 
 void sampleB() {
   // work on the sample
-  for (int k = 0; k <= K; k++) {
-    // Be the sampled row in probability p
+  for (int k = 0; k < K; k++) {
+    // Be the sampled col in probability p
     if (sampleP()) {
-      for (int j = 0; j < Bc[k].size(); j++) {
+      for (std::size_t j = 0; j < Bc[k].size(); j++) {
         SBc[SKcnt].push_back(Bc[k][j]);
         SB[Bc[k][j]].push_back(hash2(k, ha2, hb2, pmod));
         SBnnz++;
@@ -104,7 +109,7 @@ double tkans[128];
 
 int OutputKTJ(int lastk, int nowk, double maxh) {
 
-  int ret = 0;
+  // int ret = 0;
 
   double ans = 0;
 
@@ -269,7 +274,7 @@ void getParameterSample() {
 
   auto time0 = std::chrono::high_resolution_clock::now();
 
-  for (int j = 0; j <= J; j++) {
+  for (int j = 0; j < J; j++) {
 
     int tmpsizea = SAc[j].size();
     int tmpsizeb = SB[j].size();
@@ -360,7 +365,7 @@ void getParameterSample() {
     }
   }
 
-  double ansp = combineSF();
+  // double ansp = combineSF();
   // printf("SF!!  %lf %lf\n", ansp, samplek/ansp);
 
   auto time20 = std::chrono::high_resolution_clock::now();
@@ -526,13 +531,21 @@ void getParameterSample() {
   printf("nnzC = %lld, nnzCTk[7] = %lld\n", nnzCTk[0], nnzCTk[7]);
 }
 
-map<int, bool> estC[MAXN];
 
-int startA[MAXN];
-int endA[MAXN];
-int endB[MAXN];
 
 void getParameter() {
+   // These only live in this function
+   std::unique_ptr<map<int, bool>[]> estC;
+   std::unique_ptr<int[]> startA, endA, endB;
+   try {
+     estC = std::make_unique<map<int, bool>[]>(std::max(I, J));
+     startA = std::make_unique<int[]>(std::max(I, J));
+     endA = std::make_unique<int[]>(I);
+     endB = std::make_unique<int[]>(J);
+   } catch (const std::bad_alloc& e) {
+     std::cerr << "Allocation failed: " << e.what() << std::endl;
+     exit(1);
+   }
 
   // get parameters in force
 
@@ -620,9 +633,11 @@ void getParameter() {
   }
 }
 
-double getvarianceBJ(int ttj) { return 1; }
+// double getvarianceBJ(int ttj) { return 1; }
+double getvarianceBJ(int) { return 1; }
 
-double getvarianceBK(int ttk) { return 1; }
+// double getvarianceBK(int ttk) { return 1; }
+double getvarianceBK(int) { return 1; }
 
 long long getnnzC(int jj) { return nnzCTk[getlog(jj)]; }
 
@@ -773,20 +788,20 @@ long long gustest(int estsum) {
 
   esttotal += max(estpostDram / PEcnt, estpostSram / sramBank);
 
-  int estsquareiii, estsquarejjj, estsquarekkk;
-  int estsquaretti, estsquarettj, estsquarettk;
+  // int estsquareiii, estsquarejjj, estsquarekkk;
+  // int estsquaretti, estsquarettj, estsquarettk;
 
-  if (jjj == kkk) {
-    if (esttotal < estsquaremin) {
-      estsquaremin = esttotal;
-      estsquareiii = iii;
-      estsquarejjj = jjj;
-      estsquarekkk = kkk;
-      estsquaretti = tti;
-      estsquarettj = ttj;
-      estsquarettk = ttk;
-    }
-  }
+  // if (jjj == kkk) {
+  //   if (esttotal < estsquaremin) {
+  //     estsquaremin = esttotal;
+  //     estsquareiii = iii;
+  //     estsquarejjj = jjj;
+  //     estsquarekkk = kkk;
+  //     estsquaretti = tti;
+  //     estsquarettj = ttj;
+  //     estsquarettk = ttk;
+  //   }
+  // }
 
   if (esttotal < estmin) {
 
@@ -821,8 +836,12 @@ void postEstAdjust() {
 
   memset(tilecnt, 0, sizeof(tilecnt));
 
-  int iii2 = (estiii + 1) / 2, jjj2 = (estjjj + 1) / 2, kkk2 = (estkkk + 1) / 2;
-  int tti2 = esttti * 2, ttj2 = estttj * 2, ttk2 = estttk * 2;
+  // int iii2 = (estiii + 1) / 2;
+  int jjj2 = (estjjj + 1) / 2;
+  int kkk2 = (estkkk + 1) / 2;
+  // int tti2 = esttti * 2;
+  int ttj2 = estttj * 2;
+  int ttk2 = estttk * 2;
 
   for (int k = 0; k < SKcnt; k++) {
     int tmpszb = SBc[k].size();
@@ -838,7 +857,7 @@ void postEstAdjust() {
   // calculate 4 versions
 
   // J+K type0
-  int outtile = 0;
+  // int outtile = 0;
   long long estsum = 0;
   for (int tj = 0; tj < ttj; tj++) {
     for (int tk = 0; tk < ttk; tk++) {
@@ -868,7 +887,7 @@ void postEstAdjust() {
 
   // J/2+K type1
 
-  outtile = 0;
+  // outtile = 0;
   estsum = 0;
   for (int tj = 0; tj < ttj2; tj++) {
     for (int tk = 0; tk < ttk; tk++) {
@@ -898,7 +917,7 @@ void postEstAdjust() {
 
   // J+K/2 type2
 
-  outtile = 0;
+  // outtile = 0;
   estsum = 0;
   for (int tj = 0; tj < ttj; tj++) {
     for (int tk = 0; tk < ttk2; tk++) {
@@ -928,7 +947,7 @@ void postEstAdjust() {
 
   // J/2+K/2  type3
 
-  outtile = 0;
+  // outtile = 0;
   estsum = 0;
   for (int tj = 0; tj < ttj2; tj++) {
     for (int tk = 0; tk < ttk2; tk++) {

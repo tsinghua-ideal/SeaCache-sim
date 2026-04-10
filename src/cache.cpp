@@ -19,20 +19,22 @@ int inputcachesize;
 int SET = cachesize / (CACHEBLOCK * SETASSOC);
 int SETLOG = getlog(SET);
 
+// Params: cachesize, cacheblock
 void setSET() {
   SET = (cachesize) / (CACHEBLOCK * SETASSOC);
   SETLOG = getlog(SET);
+  initialize_cache();
 }
 
-bool Valid[MAXSET][SETASSOC];
-int Tag[MAXSET][SETASSOC];
-int lrubit[MAXSET][SETASSOC];
+bool *Valid = nullptr;
+int *Tag = nullptr;
+int *lrubit = nullptr;
 
-int lfubit[MAXSET][SETASSOC];
+int *lfubit = nullptr;
 
-bool virtualValid[MAXSET][VIRTUALSETASSOC];
-int virtualTag[MAXSET][VIRTUALSETASSOC];
-int virtuallfubit[MAXSET][VIRTUALSETASSOC];
+bool *virtualValid = nullptr;
+int *virtualTag = nullptr;
+int *virtuallfubit = nullptr;
 
 bool Valid4[256];
 int Tag4[256];
@@ -40,19 +42,19 @@ int lrubit4[256];
 
 int LFUbit = 4;
 int LFUmax = (1 << LFUbit) - 1;
-int LFUtag[MAXN];
+int *LFUtag = nullptr;
 
 // split into 4 parts.  witin 16: 0000, 0001, 0010,,,,  1111
-short partialValid[MAXSET][SETASSOC];
+// short *partialValid = nullptr;
 
 // for the pack&split
 const int N_TAG_L_BITS = 0; // Tag-L bits
 
-unsigned char Cnt[MAXSET][SETASSOC];
-bool Next[MAXSET][SETASSOC];
-unsigned short PosOrig[MAXSET][SETASSOC];
+unsigned char *Cnt = nullptr;
+bool *Next = nullptr;
+unsigned short *PosOrig = nullptr;
 
-unsigned short vPosOrig[MAXSET][VIRTUALSETASSOC];
+unsigned short *vPosOrig = nullptr;
 
 // use to record the lru.
 // higher is better (accessed recently)
@@ -124,44 +126,44 @@ unsigned short getOrig(long long addr) {
 // = 1 when use virtual tag
 bool useVirtualTag = 1;
 
-int getLRU(int _set, int _index) { return lrubit[_set][_index]; }
-int getlfubit(int _set, int _index) { return lfubit[_set][_index]; }
+int getLRU(int _set, int _index) { return lrubit[_set * SETASSOC + _index]; }
+int getlfubit(int _set, int _index) { return lfubit[_set * SETASSOC + _index]; }
 
 void updateLRU(int _set, int _index) {
   cachecycle++;
-  lrubit[_set][_index] = cachecycle;
+  lrubit[_set * SETASSOC + _index] = cachecycle;
 }
 
 void updateLRUOPT(int _set, int _index, int nextpos) {
-  lrubit[_set][_index] = nextpos;
+  lrubit[_set * SETASSOC + _index] = nextpos;
 }
 
 void updateLRUOPTLFU(int _set, int _index, int lfutime) {
-  lrubit[_set][_index] = lfutime;
+  lrubit[_set * SETASSOC + _index] = lfutime;
 }
 
 void updatePracticalLFU(int _set, int _index) {
-  if (lfubit[_set][_index]) {
-    lfubit[_set][_index]--;
+  if (lfubit[_set * SETASSOC + _index]) {
+    lfubit[_set * SETASSOC + _index]--;
   }
 }
 
 void initLRU(int _set, int _index) {
   // play the same as updateLRU in LRU policy
   cachecycle++;
-  lrubit[_set][_index] = cachecycle;
+  lrubit[_set * SETASSOC + _index] = cachecycle;
 }
 
 void initLRUOPT(int _set, int _index, int nextpos) {
-  lrubit[_set][_index] = nextpos;
+  lrubit[_set * SETASSOC + _index] = nextpos;
 }
 
 void initLRUOPTLFU(int _set, int _index, int LFUtime) {
-  lrubit[_set][_index] = LFUtime;
+  lrubit[_set * SETASSOC + _index] = LFUtime;
 }
 
 void initPracticalLFU(int _set, int _index, int LFUtime) {
-  lfubit[_set][_index] = LFUtime;
+  lfubit[_set * SETASSOC + _index] = LFUtime;
 }
 
 bool cacheHit(long long addr) {
@@ -169,7 +171,7 @@ bool cacheHit(long long addr) {
   int _tag = getTag(addr);
 
   for (int i = 0; i < SETASSOC; i++) {
-    if (Valid[_set][i] && (Tag[_set][i] == _tag)) {
+    if (Valid[_set * SETASSOC + i] && (Tag[_set * SETASSOC + i] == _tag)) {
       // hit !!
 
       // update lru bit
@@ -188,7 +190,7 @@ bool cacheHitOPT(long long addr, int nextpos) {
   int _tag = getTag(addr);
 
   for (int i = 0; i < SETASSOC; i++) {
-    if (Valid[_set][i] && (Tag[_set][i] == _tag)) {
+    if (Valid[_set * SETASSOC + i] && (Tag[_set * SETASSOC + i] == _tag)) {
       // hit !!
       updateLRUOPT(_set, i, nextpos);
       return 1;
@@ -204,7 +206,7 @@ bool cacheHitOPTLFU(long long addr, int lfutime) {
   int _tag = getTag(addr);
 
   for (int i = 0; i < SETASSOC; i++) {
-    if (Valid[_set][i] && (Tag[_set][i] == _tag)) {
+    if (Valid[_set * SETASSOC + i] && (Tag[_set * SETASSOC + i] == _tag)) {
       // hit !!
       updateLRUOPTLFU(_set, i, lfutime);
       return 1;
@@ -219,19 +221,19 @@ bool cacheHitPracticalLFU(long long addr, bool isfirst, long long firstaddr) {
   int _tag = getTag2(addr);
 
   for (int i = 0; i < SETASSOC; i++) {
-    if (Valid[_set][i]) {
+    if (Valid[_set * SETASSOC + i]) {
       // fuzzy compare
-      if ((Tag[_set][i] <= _tag) && (_tag < Tag[_set][i] + Cnt[_set][i] + 1)) {
+      if ((Tag[_set * SETASSOC + i] <= _tag) && (_tag < Tag[_set * SETASSOC + i] + Cnt[_set * SETASSOC + i] + 1)) {
 
         if (!isfirst) {
           // need to check orig
-          if (PosOrig[_set][i] != getOrig(firstaddr)) {
+          if (PosOrig[_set * SETASSOC + i] != getOrig(firstaddr)) {
             // not the same orig
             continue;
           }
         } else {
           // first
-          if (PosOrig[_set][i] != 0) {
+          if (PosOrig[_set * SETASSOC + i] != 0) {
             continue;
           }
         }
@@ -257,7 +259,7 @@ void cacheReplace(long long addr) {
   int _tag = getTag(addr);
 
   for (int i = 0; i < SETASSOC; i++) {
-    if (!Valid[_set][i]) {
+    if (!Valid[_set * SETASSOC + i]) {
       // if has invalid slot, use it
       replacelru = -1;
       replaceindex = i;
@@ -274,8 +276,8 @@ void cacheReplace(long long addr) {
     }
   }
 
-  Valid[_set][replaceindex] = 1;
-  Tag[_set][replaceindex] = _tag;
+  Valid[_set * SETASSOC + replaceindex] = 1;
+  Tag[_set * SETASSOC + replaceindex] = _tag;
 
   initLRU(_set, replaceindex);
 }
@@ -291,7 +293,7 @@ void cacheReplaceOPT(long long addr, int nextpos) {
   int _tag = getTag(addr);
 
   for (int i = 0; i < SETASSOC; i++) {
-    if (!Valid[_set][i]) {
+    if (!Valid[_set * SETASSOC + i]) {
       // if has invalid slot, use it
       replacelru = -1;
       replaceindex = i;
@@ -308,8 +310,8 @@ void cacheReplaceOPT(long long addr, int nextpos) {
     }
   }
 
-  Valid[_set][replaceindex] = 1;
-  Tag[_set][replaceindex] = _tag;
+  Valid[_set * SETASSOC + replaceindex] = 1;
+  Tag[_set * SETASSOC + replaceindex] = _tag;
 
   initLRUOPT(_set, replaceindex, nextpos);
 }
@@ -324,7 +326,7 @@ void cacheReplaceOPTLFU(long long addr, int LFUtime) {
   int _tag = getTag(addr);
 
   for (int i = 0; i < SETASSOC; i++) {
-    if (!Valid[_set][i]) {
+    if (!Valid[_set * SETASSOC + i]) {
       // if has invalid slot, use it
       replacelru = -1;
       replaceindex = i;
@@ -341,8 +343,8 @@ void cacheReplaceOPTLFU(long long addr, int LFUtime) {
     }
   }
 
-  Valid[_set][replaceindex] = 1;
-  Tag[_set][replaceindex] = _tag;
+  Valid[_set * SETASSOC + replaceindex] = 1;
+  Tag[_set * SETASSOC + replaceindex] = _tag;
 
   initLRUOPTLFU(_set, replaceindex, LFUtime);
 }
@@ -380,22 +382,22 @@ void cacheReplacePracticalLFU(long long addr, bool isfirst,
   // cache miss. if use virtual tag, check whether in virtual tag.
   if (useVirtualTag) {
     for (int i = 0; i < VIRTUALSETASSOC; i++) {
-      if (virtualValid[_set][i]) {
-        if (virtualTag[_set][i] == _tag) {
+      if (virtualValid[_set * VIRTUALSETASSOC + i]) {
+        if (virtualTag[_set * VIRTUALSETASSOC + i] == _tag) {
           // in virtual tag, then first update the virtual tag flfu (-1)
           // then check whether in cache has invalid or flfu less than this
           // if has, then put this into cache. if the replaced one is not
           // invalid, then put it into virtual tag.
           invirtualtag = 1;
           virtualindex = i;
-          virtuallfubit[_set][i]--;
+          virtuallfubit[_set * VIRTUALSETASSOC + i]--;
         }
       }
     }
   }
 
   for (int i = 0; i < SETASSOC; i++) {
-    if (!Valid[_set][i]) {
+    if (!Valid[_set * SETASSOC + i]) {
       // if has invalid slot, use it without other considerations
       replacelfu = -1;
       replaceindex = i;
@@ -413,13 +415,13 @@ void cacheReplacePracticalLFU(long long addr, bool isfirst,
   if (!useVirtualTag) {
     // has invalid slot, fill
     if (replacelfu == -1) {
-      Valid[_set][replaceindex] = 1;
-      Tag[_set][replaceindex] = _tag;
-      Cnt[_set][replaceindex] = fibercnt - 1;
+      Valid[_set * SETASSOC + replaceindex] = 1;
+      Tag[_set * SETASSOC + replaceindex] = _tag;
+      Cnt[_set * SETASSOC + replaceindex] = fibercnt - 1;
       if (!isfirst) {
-        PosOrig[_set][replaceindex] = getOrig(firstaddr);
+        PosOrig[_set * SETASSOC + replaceindex] = getOrig(firstaddr);
       } else {
-        PosOrig[_set][replaceindex] = 0;
+        PosOrig[_set * SETASSOC + replaceindex] = 0;
       }
       initPracticalLFU(_set, replaceindex, 0);
       return;
@@ -427,13 +429,13 @@ void cacheReplacePracticalLFU(long long addr, bool isfirst,
 
     // has 0 slot, replace
     if (replacelfu == 0) {
-      Valid[_set][replaceindex] = 1;
-      Tag[_set][replaceindex] = _tag;
-      Cnt[_set][replaceindex] = fibercnt - 1;
+      Valid[_set * SETASSOC + replaceindex] = 1;
+      Tag[_set * SETASSOC + replaceindex] = _tag;
+      Cnt[_set * SETASSOC + replaceindex] = fibercnt - 1;
       if (!isfirst) {
-        PosOrig[_set][replaceindex] = getOrig(firstaddr);
+        PosOrig[_set * SETASSOC + replaceindex] = getOrig(firstaddr);
       } else {
-        PosOrig[_set][replaceindex] = 0;
+        PosOrig[_set * SETASSOC + replaceindex] = 0;
       }
       initPracticalLFU(_set, replaceindex, 0);
       return;
@@ -447,53 +449,53 @@ void cacheReplacePracticalLFU(long long addr, bool isfirst,
       // has invalid slot, fill, put the virtual tag slot to invalid
       if (replacelfu == -1) {
         // put current slot into cache
-        Valid[_set][replaceindex] = 1;
-        Tag[_set][replaceindex] = _tag;
-        Cnt[_set][replaceindex] = fibercnt - 1;
+        Valid[_set * SETASSOC + replaceindex] = 1;
+        Tag[_set * SETASSOC + replaceindex] = _tag;
+        Cnt[_set * SETASSOC + replaceindex] = fibercnt - 1;
         if (!isfirst) {
-          PosOrig[_set][replaceindex] = getOrig(firstaddr);
+          PosOrig[_set * SETASSOC + replaceindex] = getOrig(firstaddr);
         } else {
-          PosOrig[_set][replaceindex] = 0;
+          PosOrig[_set * SETASSOC + replaceindex] = 0;
         }
-        initPracticalLFU(_set, replaceindex, virtuallfubit[_set][virtualindex]);
+        initPracticalLFU(_set, replaceindex, virtuallfubit[_set * VIRTUALSETASSOC + virtualindex]);
 
         // put current virtual tag to invalid
-        virtualValid[_set][virtualindex] = 0;
-        vPosOrig[_set][virtualindex] = 0;
+        virtualValid[_set * VIRTUALSETASSOC + virtualindex] = 0;
+        vPosOrig[_set * SETASSOC + virtualindex] = 0;
         return;
       }
 
       // a slot in cache has lfu less then this in virtual. replace.
-      if (replacelfu < virtuallfubit[_set][virtualindex]) {
+      if (replacelfu < virtuallfubit[_set * VIRTUALSETASSOC + virtualindex]) {
         // update metadata in cache (config to the current access)
-        Valid[_set][replaceindex] = 1;
-        int oldtag = Tag[_set][replaceindex];
-        Tag[_set][replaceindex] = _tag;
-        Cnt[_set][replaceindex] = fibercnt - 1;
-        int oldorig = PosOrig[_set][replaceindex];
+        Valid[_set * SETASSOC + replaceindex] = 1;
+        int oldtag = Tag[_set * SETASSOC + replaceindex];
+        Tag[_set * SETASSOC + replaceindex] = _tag;
+        Cnt[_set * SETASSOC + replaceindex] = fibercnt - 1;
+        // int oldorig = PosOrig[_set * SETASSOC + replaceindex];
         if (!isfirst) {
-          PosOrig[_set][replaceindex] = getOrig(firstaddr);
+          PosOrig[_set * SETASSOC + replaceindex] = getOrig(firstaddr);
         } else {
-          PosOrig[_set][replaceindex] = 0;
+          PosOrig[_set * SETASSOC + replaceindex] = 0;
         }
-        initPracticalLFU(_set, replaceindex, virtuallfubit[_set][virtualindex]);
+        initPracticalLFU(_set, replaceindex, virtuallfubit[_set * VIRTUALSETASSOC + virtualindex]);
 
         // update metadata in virtual tag (config to the old slot in cache)
-        virtualValid[_set][virtualindex] = 1;
-        virtualTag[_set][virtualindex] = oldtag;
-        virtuallfubit[_set][virtualindex] = replacelfu;
+        virtualValid[_set * VIRTUALSETASSOC + virtualindex] = 1;
+        virtualTag[_set * VIRTUALSETASSOC + virtualindex] = oldtag;
+        virtuallfubit[_set * VIRTUALSETASSOC + virtualindex] = replacelfu;
       }
     } else { // not in cache; not in virtual tag
 
       // has invalid slot, fill
       if (replacelfu == -1) {
-        Valid[_set][replaceindex] = 1;
-        Tag[_set][replaceindex] = _tag;
-        Cnt[_set][replaceindex] = fibercnt - 1;
+        Valid[_set * SETASSOC + replaceindex] = 1;
+        Tag[_set * SETASSOC + replaceindex] = _tag;
+        Cnt[_set * SETASSOC + replaceindex] = fibercnt - 1;
         if (!isfirst) {
-          PosOrig[_set][replaceindex] = getOrig(firstaddr);
+          PosOrig[_set * SETASSOC + replaceindex] = getOrig(firstaddr);
         } else {
-          PosOrig[_set][replaceindex] = 0;
+          PosOrig[_set * SETASSOC + replaceindex] = 0;
         }
         initPracticalLFU(_set, replaceindex, 0);
         return;
@@ -501,13 +503,13 @@ void cacheReplacePracticalLFU(long long addr, bool isfirst,
 
       // has 0 slot, replace
       if (replacelfu == 0) {
-        Valid[_set][replaceindex] = 1;
-        Tag[_set][replaceindex] = _tag;
-        Cnt[_set][replaceindex] = fibercnt - 1;
+        Valid[_set * SETASSOC + replaceindex] = 1;
+        Tag[_set * SETASSOC + replaceindex] = _tag;
+        Cnt[_set * SETASSOC + replaceindex] = fibercnt - 1;
         if (!isfirst) {
-          PosOrig[_set][replaceindex] = getOrig(firstaddr);
+          PosOrig[_set * SETASSOC + replaceindex] = getOrig(firstaddr);
         } else {
-          PosOrig[_set][replaceindex] = 0;
+          PosOrig[_set * SETASSOC + replaceindex] = 0;
         }
 
         initPracticalLFU(_set, replaceindex, 0);
@@ -518,26 +520,26 @@ void cacheReplacePracticalLFU(long long addr, bool isfirst,
       // first put into invalid slot, if there is no invalid slot, then put into
       // lfu=0 slot, if there is no lfu=0 slot, then do nothing
       for (int i = 0; i < VIRTUALSETASSOC; i++) {
-        if (!virtualValid[_set][i]) {
+        if (!virtualValid[_set * VIRTUALSETASSOC + i]) {
           // has an invalid slot, put here and return (don't need to check other
           // slots)
-          virtualValid[_set][i] = 1;
-          virtualTag[_set][i] = _tag;
-          virtuallfubit[_set][i] = 0;
+          virtualValid[_set * VIRTUALSETASSOC + i] = 1;
+          virtualTag[_set * VIRTUALSETASSOC + i] = _tag;
+          virtuallfubit[_set * VIRTUALSETASSOC + i] = 0;
           return;
         } else {
         }
       }
       for (int i = 0; i < VIRTUALSETASSOC; i++) {
-        if (!virtualValid[_set][i]) {
+        if (!virtualValid[_set * VIRTUALSETASSOC + i]) {
         } else {
           // valid
-          if (virtuallfubit[_set][i] == 0) {
+          if (virtuallfubit[_set * VIRTUALSETASSOC + i] == 0) {
             // if the flfu bit is 0, replace it. (according to lru, the current
             // is better)
-            virtualValid[_set][i] = 1;
-            virtualTag[_set][i] = _tag;
-            virtuallfubit[_set][i] = 0;
+            virtualValid[_set * VIRTUALSETASSOC + i] = 1;
+            virtualTag[_set * VIRTUALSETASSOC + i] = _tag;
+            virtuallfubit[_set * VIRTUALSETASSOC + i] = 0;
 
             return;
           }
@@ -645,8 +647,8 @@ void cacheEvict(long long addr) {
 
     // set the valid to 0
     for (int i = 0; i < SETASSOC; i++) {
-      if (Valid[_set][i] && (Tag[_set][i] == _tag)) {
-        Valid[_set][i] = 0;
+      if (Valid[_set * SETASSOC + i] && (Tag[_set * SETASSOC + i] == _tag)) {
+        Valid[_set * SETASSOC + i] = 0;
       }
     }
   }
@@ -661,7 +663,7 @@ void cacheEvict(long long addr) {
 
 // need a queue for each row to track all the nexposes in the prefetch window.
 // the number track in this queue is the I number of A
-queue<int> nextposvector[MAXN];
+queue<int> *nextposvector = nullptr;
 
 int getNextpos(int rowid, int ii) {
 
@@ -680,7 +682,7 @@ int getNextpos(int rowid, int ii) {
   return ReplaceMAX;
 }
 
-int getLFU(int rowid, int ii) {
+int getLFU(int rowid, int /* ii */) {
   int retlfu = LFUtag[rowid];
   LFUtag[rowid]--;
   return retlfu;
@@ -767,12 +769,12 @@ bool cacheReadPracticalLFU(long long addr, bool isfirst, long long firstaddr) {
 }
 
 void initializeCacheValid() {
-  memset(Valid, 0, sizeof(Valid));
+  memset(Valid, 0, sizeof(bool) * SET * SETASSOC);
   if (useVirtualTag) {
-    memset(virtualValid, 0, sizeof(virtualValid));
+    memset(virtualValid, 0, sizeof(bool) * SET * VIRTUALSETASSOC);
   }
-  memset(PosOrig, 0, sizeof(PosOrig));
-  memset(vPosOrig, 0, sizeof(vPosOrig));
+  memset(PosOrig, 0, sizeof(short) * SET * SETASSOC);
+  memset(vPosOrig, 0, sizeof(short) * SET * SETASSOC);
 }
 
 // ii here means the now access position for OPT policy
@@ -780,7 +782,7 @@ __attribute__((noinline)) void cacheAccessFiber(int jj, int fibersize, int ii) {
 
   // fiber + cut + whole
   // only cache the part within a cacheline (x-cache)
-  if (cacheScheme == 0) {
+  if (cacheScheme == CACHE_SCHEME_BASE) {
     // if the whole size exceed the cacheline, then the rest part miss
     long long tmpaddr = getCacheAddr(jj, 0);
 
@@ -811,7 +813,7 @@ __attribute__((noinline)) void cacheAccessFiber(int jj, int fibersize, int ii) {
 
   // fiber + split + whole
   // split to multiple consective cachelines when exceed cacheline size
-  if (cacheScheme == 1) {
+  if (cacheScheme == CACHE_SCHEME_MAPPING) {
     // for each BLOCK segment of the B fiber
 
     // will be set to 1 if any cacheblock is miss
@@ -924,11 +926,11 @@ __attribute__((noinline)) void cacheAccessFiber(int jj, int fibersize, int ii) {
 
   // InnerSP
   // scheme0 + static OPT
-  if (cacheScheme == 11100) {
+  if (cacheScheme == CACHE_SCHEME_INNER_SP) {
     int nextpos = getNextpos(jj, ii);
     // access the head pointer
     computeSramAccess += sramWriteBandwidth(CACHEBLOCK);
-    bool anymiss = 0;
+    // bool anymiss = 0;
 
     long long tmpaddr = getCacheAddr(jj, 0);
     bool tmphit = cacheReadOPT(tmpaddr, nextpos);
@@ -957,11 +959,11 @@ __attribute__((noinline)) void cacheAccessFiber(int jj, int fibersize, int ii) {
 
   // Sparch
   // scheme0 + dynamic OPT
-  if (cacheScheme == 11101) {
+  if (cacheScheme == CACHE_SCHEME_SPARCH) {
     int nextpos = getNextpos(jj, ii);
     // access the head pointer
     computeSramAccess += sramWriteBandwidth(CACHEBLOCK);
-    bool anymiss = 0;
+    // bool anymiss = 0;
 
     long long tmpaddr = getCacheAddr(jj, 0);
     bool tmphit = cacheReadOPT(tmpaddr, nextpos);
@@ -1014,7 +1016,7 @@ __attribute__((noinline)) void cacheAccessFiber(int jj, int fibersize, int ii) {
   // 88 refers to the practical FLFU (enabling 4-bit, virtual tag)  (virtual
   // tag can be configured or not (baseline)) the flu information is no longer
   // kept in the LFUtag, but the extra lfubit
-  if (cacheScheme == 88) {
+  if (cacheScheme == CACHE_SCHEME_FLFU) {
     bool anymiss = 0;
     fibersize = currsizeB[jj] * 3;
     for (int tmpcurr = 0; tmpcurr < fibersize; tmpcurr += CACHEBLOCK) {
@@ -1033,3 +1035,65 @@ __attribute__((noinline)) void cacheAccessFiber(int jj, int fibersize, int ii) {
     }
   }
 }
+
+// (re-)allocate memory dynamically
+int last_cache_set = 0;
+void initialize_cache() {
+  if(SET != last_cache_set) {
+    deinitialize_cache();
+    last_cache_set = SET;
+  }
+  try {
+    Valid = new bool[SET * SETASSOC]();
+    Tag = new int[SET * SETASSOC]();
+    lrubit = new int[SET * SETASSOC]();
+    lfubit = new int[SET * SETASSOC]();
+
+    virtualValid = new bool[SET * VIRTUALSETASSOC]();
+    virtualTag = new int[SET * VIRTUALSETASSOC]();
+    virtuallfubit = new int[SET * VIRTUALSETASSOC]();
+
+    PosOrig = new unsigned short[SET * SETASSOC]();
+    vPosOrig = new unsigned short[SET * SETASSOC]();
+
+    Cnt = new unsigned char[SET * SETASSOC]();
+    Next = new bool[SET * SETASSOC]();
+  } catch (const std::bad_alloc &e) {
+    std::cerr << "Error allocating memory for " << e.what() << std::endl;
+    std::exit(1);
+  }
+}
+
+void deinitialize_cache() {
+    if(Valid != nullptr) delete[] Valid;
+    if(Tag != nullptr) delete[] Tag;
+    if(lrubit != nullptr) delete[] lrubit;
+    if(lfubit != nullptr) delete[] lfubit;
+
+    if(virtualValid != nullptr) delete[] virtualValid;
+    if(virtualTag != nullptr) delete[] virtualTag;
+    if(virtuallfubit != nullptr) delete[] virtuallfubit;
+
+    if(PosOrig != nullptr) delete[] PosOrig;
+    if(vPosOrig != nullptr) delete[] vPosOrig;
+
+    if(Cnt != nullptr) delete[] Cnt;
+    if(Next != nullptr) delete[] Next;
+
+    // (re)set all the pointers to nullptr
+    Valid = nullptr;
+    Tag = nullptr;
+    lrubit = nullptr;
+    lfubit = nullptr;
+
+    virtualValid = nullptr;
+    virtualTag = nullptr;
+    virtuallfubit = nullptr;
+
+    PosOrig = nullptr;
+    vPosOrig = nullptr;
+
+    Cnt = nullptr;
+    Next = nullptr;
+}
+

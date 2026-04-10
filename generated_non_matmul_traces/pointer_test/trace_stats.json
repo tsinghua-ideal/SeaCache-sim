@@ -1,0 +1,31 @@
+{
+  "num_addresses": 20000,
+  "min_addr": 0,
+  "max_addr": 32760,
+  "num_unique_addresses": 2751,
+  "num_unique_deltas": 2242,
+  "first_20_deltas": [
+    -13080,
+    12504,
+    -14856,
+    776,
+    -15672,
+    26384,
+    -104,
+    -6456,
+    2424,
+    1032,
+    -5960,
+    -9376,
+    3824,
+    -9624,
+    4704,
+    22072,
+    -10192,
+    5480,
+    -9160,
+    -6688
+  ],
+  "max_positive_jump": 31512,
+  "num_unique_cachelines": 512
+}

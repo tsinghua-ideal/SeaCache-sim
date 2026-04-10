@@ -8,7 +8,7 @@
 #define VIRTUALSETASSOC 4
 #define VIRTUALSETASSOCLOG 2
 
-#define MAXSET 1000005
+// #define MAXSET 1000005
 
 #define BIAS 23
 
@@ -23,23 +23,23 @@ extern bool useVirtualTag;
 extern int inputcachesize;
 extern long long elements_processed_since_last_adjustment;
 
-extern queue<int> nextposvector[MAXN];
+extern queue<int> *nextposvector;
 
 extern int LFUmax;
-extern int LFUtag[MAXN];
+extern int *LFUtag;
 
-extern bool Valid[MAXSET][SETASSOC];
-extern int Tag[MAXSET][SETASSOC];
-extern int lrubit[MAXSET][SETASSOC];
+extern bool *Valid;
+extern int *Tag;
+extern int *lrubit;
 
-extern int lfubit[MAXSET][SETASSOC];
+extern int *lfubit;
 
-extern bool virtualValid[MAXSET][VIRTUALSETASSOC];
-extern int virtualTag[MAXSET][VIRTUALSETASSOC];
-extern int virtuallfubit[MAXSET][VIRTUALSETASSOC];
+extern bool *virtualValid;
+extern int *virtualTag;
+extern int *virtuallfubit;
 
-extern unsigned short PosOrig[MAXSET][SETASSOC];
-extern unsigned short vPosOrig[MAXSET][VIRTUALSETASSOC];
+extern unsigned short *PosOrig;
+extern unsigned short *vPosOrig;
 
 extern long long prefetch_discards;
 extern long long prefetch_increments;
@@ -85,5 +85,8 @@ long long getTagPS(long long fiberId);
 unsigned short getOrig(long long addr);
 
 void setSET();
+
+void initialize_cache();
+void deinitialize_cache();
 
 #endif

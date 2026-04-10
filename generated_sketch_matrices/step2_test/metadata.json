@@ -1,0 +1,12 @@
+{
+  "name": "step2_test",
+  "type": "countsketch",
+  "shape": [
+    256,
+    4096
+  ],
+  "nnz": 4096,
+  "density": 0.00390625,
+  "s": 1,
+  "seed": 0
+}

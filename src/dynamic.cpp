@@ -76,11 +76,23 @@ void updateDynamicTile(int _tj, int t0, int t1) {
 // use _iii/_jjj/_kkk represent the tile after finetune.
 void update_T() {
 
-  int oldiii = iii, oldjjj = jjj, oldkkk = kkk;
-  int oldtti = tti, oldttj = ttj, oldttk = ttk;
-  int iii2 = (iii + 1) / 2, jjj2 = (jjj + 1) / 2, kkk2 = (kkk + 1) / 2;
-  int tti2 = tti * 2, ttj2 = ttj * 2, ttk2 = ttk * 2;
-  int estsum = 0;
+  int oldiii = iii;
+  int oldjjj = jjj;
+  int oldkkk = kkk;
+
+  int oldtti = tti;
+  int oldttj = ttj;
+  int oldttk = ttk;
+
+  // int iii2 = (iii + 1) / 2;
+  int jjj2 = (jjj + 1) / 2;
+  int kkk2 = (kkk + 1) / 2;
+
+  // int tti2 = tti * 2;
+  int ttj2 = ttj * 2;
+  int ttk2 = ttk * 2;
+
+  // int estsum = 0;
 
   // jjj+kkk type 0
   // Tcnt need to clear and recalculate at each round, sizejksum and tilesum not
@@ -158,9 +170,9 @@ void update_T() {
     mintype = 3;
   }
 
-  // only can increase when *2 <= I/J/K, otherwise overflow
+  // only can increase when *2 < I/J/K, otherwise overflow
   // jjj*2 + kkk type4
-  if (oldjjj * 2 <= J) {
+  if (oldjjj * 2 < J) {
     sizejk = (Tcnt[0][0] + Tcnt[0][1] + Tcnt[1][0] + Tcnt[1][1]) * 3 * 2 +
              oldjjj * 2;
     sizejksum[4] += min(sizejk, Bsize);
@@ -179,7 +191,7 @@ void update_T() {
   }
 
   // jjj + kkk*2 type5
-  if (oldkkk * 2 <= K) {
+  if (oldkkk * 2 < K) {
     sizejk =
         (Tcnt[0][0] + Tcnt[0][1] + Tcnt[1][0] + Tcnt[1][1]) * 3 * 2 + oldjjj;
     sizejksum[5] += min(sizejk, Bsize);
@@ -198,7 +210,7 @@ void update_T() {
   }
 
   // jjj*2 + kkk*2 type6
-  if ((oldjjj * 2 <= J) && (oldkkk * 2 <= K)) {
+  if ((oldjjj * 2 < J) && (oldkkk * 2 < K)) {
     sizejk = (Tcnt[0][0] + Tcnt[0][1] + Tcnt[1][0] + Tcnt[1][1]) * 3 * 4 +
              oldjjj * 2;
     sizejksum[6] += min(sizejk, Bsize);
@@ -217,7 +229,7 @@ void update_T() {
   }
 
   // jjj/2 + kkk*2  type7
-  if (oldkkk * 2 <= K) {
+  if (oldkkk * 2 < K) {
     sizejk = (Tcnt[0][0] + Tcnt[0][1]) * 3 * 2 + jjj2;
     sizejksum[7] += min(sizejk, Bsize);
 
@@ -239,7 +251,7 @@ void update_T() {
   }
 
   // jjj*2 + kkk/2 type8
-  if (oldjjj * 2 <= J) {
+  if (oldjjj * 2 < J) {
     sizejk = (Tcnt[0][0] + Tcnt[1][0]) * 3 * 2 + jjj;
     sizejksum[8] += min(sizejk, Bsize);
 

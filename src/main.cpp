@@ -4,10 +4,35 @@
 #include "json.hpp"
 #include "simulator.h"
 #include <fstream>
+#include <cstdlib>
 
 using json = nlohmann::json;
 
 int main(int argc, char *argv[]) {
+  // Clean up memory at exit
+  if(std::atexit(deinitialize_data)) {
+    std::cout << "Error registering deinitialize_data in atexit" << std::endl;
+    return 1;
+  }
+  if(std::atexit(deinitialize_simulator)) {
+    std::cout << "Error registering deinitialize_simulator in atexit" << std::endl;
+    return 1;
+  }
+  if(std::atexit(deinitialize_cache)) {
+    std::cout << "Error registering deinitialize_cache in atexit" << std::endl;
+    return 1;
+  }
+
+  if(argc != 4) {
+    std::cerr << "Usage: " << argv[0] << " matrix1 matrix2 config/file/path\n"
+        << "\nSearch locations for matrix1 and matrix2, in order:\n"
+        << "  ./largedata/matrix1/matrix1.mtx\n"
+        << "  ./data/matrix1.mtx\n"
+        << "  ./dense/matrix1.mtx\n"
+        << "  ./bfs/matrix1.mtx\n"
+        << "config_file is a fully qualified path to the .json config for the run (likely config/config.json).\n" << std::endl;
+    return 1;
+  }
 
   std::string matrix_name1 = argv[1];
   std::string matrix_name2 = argv[2];
@@ -57,7 +82,7 @@ int main(int argc, char *argv[]) {
   }
 
   if (!freopen((output_dir + (ISCACHE ? "C" : "_") + printDataFlow[dataflow] +
-                (baselinetest ? "Base_" : "SeaCache_") +
+                (baselinetest ? "Base_" : "570Cache_") +
                 std::to_string(tmpsram) + "MB_" + std::to_string(tmpbandw) +
                 "GBs_" + std::to_string(tmpPE) + "PEs_" +
                 std::to_string(tmpbank) + "sbanks_" + "_" + matrix_name1 + "_" +
@@ -69,7 +94,8 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  const int BUFFERSIZE = 512;
+  // Lines limited to 1024 characters by spec
+  const std::size_t BUFFERSIZE = 1024;
   char readbuffer[BUFFERSIZE];
 
   // read and ignore annotation '%' lines
@@ -94,6 +120,8 @@ int main(int argc, char *argv[]) {
   I = N;
   J = M;
 
+  initialize_data_A();
+
   string input;
 
   fflush(stdout);
@@ -106,6 +134,7 @@ int main(int argc, char *argv[]) {
     std::vector<std::string> tokens;
     std::string token;
 
+    // Splits the file input on whitespace
     while (iss >> token) {
       tokens.push_back(token);
     }
@@ -113,23 +142,29 @@ int main(int argc, char *argv[]) {
     int xx, yy;
     double zz, lala;
 
-    if (tokens.size() == 2) {
+    /* NOTE(ejs): Each mtx row is a matrix entry.
+    xx, yy [zz, lala]
+        - xx  = row index
+        - yy  = col index
+        - zz  = real component of value? (ignored)
+        - lala= imag. component of value? (ignored)
+    */
+    if (tokens.size() == 2) { // pattern (nonzero values ommitted)
 
       std::istringstream(tokens[0]) >> xx;
       std::istringstream(tokens[1]) >> yy;
       // std::cout << "values: " << xx << ", " << yy << std::endl;
-    } else if (tokens.size() == 3) {
+    } else if (tokens.size() == 3) { // real or integer matrix
 
       std::istringstream(tokens[0]) >> xx;
       std::istringstream(tokens[1]) >> yy;
       std::istringstream(tokens[2]) >> zz;
       // std::cout << "values: " << xx << ", " << yy << ", " << zz << std::endl;
-    } else if (tokens.size() == 4) {
-
+    } else if (tokens.size() == 4) { // complex matrix (we only take the real part, unfortunately)
       std::istringstream(tokens[0]) >> xx;
       std::istringstream(tokens[1]) >> yy;
       std::istringstream(tokens[2]) >> zz;
-      std::istringstream(tokens[2]) >> lala;
+      std::istringstream(tokens[3]) >> lala;
       // std::cout << "values: " << xx << ", " << yy << ", " << zz << std::endl;
     } else {
 
@@ -139,29 +174,40 @@ int main(int argc, char *argv[]) {
       return 0;
     }
 
+    // WARNING(ejs): mtx indices are stored 1-based; it converts 0-based representation in code
     if (transpose) {
-      Ac[xx].push_back(yy);
-      A[yy].push_back(xx);
+      Ac[xx - 1].push_back(yy - 1);
+      A[yy - 1].push_back(xx - 1);
     } else {
-      A[xx].push_back(yy);
-      Ac[yy].push_back(xx);
+      A[xx - 1].push_back(yy - 1);
+      Ac[yy - 1].push_back(xx - 1);
     }
   }
 
-  for (int i = 0; i <= I; i++) {
+  for (int i = 0; i < I; i++) {
     sort(A[i].begin(), A[i].end());
   }
-  for (int j = 0; j <= J; j++) {
+  for (int j = 0; j < J; j++) {
     sort(Ac[j].begin(), Ac[j].end());
   }
 
   if (condensedOP) {
+    // memory management for sparchA, sparchAi
+    sparchA = new std::vector<int>[J]();
+    sparchAi = new std::vector<int>[J]();
+    if(sparchA == nullptr || sparchAi == nullptr) {
+      if(sparchA != nullptr) delete[] sparchA;
+      if(sparchAi != nullptr) delete[] sparchAi;
+      std::cerr << "Error allocating memory for sparchA or sparchAi" << std::endl;
+      std::exit(1);
+    }
+
     // if use the condensed OP dataflow, need to preprocess the A matrix into
     // the condensed format first. first put the data into sparchA[], then put
     // it back to A[], and call gust dataflow
     for (int j = 0; j < J; j++) {
       for (int i = 0; i < I; i++) {
-        if (A[i].size() > j) {
+        if (static_cast<int>(A[i].size()) > j) {
           sparchA[j].push_back(A[i][j]);
           sparchAi[j].push_back(i);
         }
@@ -170,10 +216,13 @@ int main(int argc, char *argv[]) {
 
     for (int j = 0; j < J; j++) {
       A[j].clear();
-      for (int i = 0; i < sparchA[j].size(); i++) {
+      for (int i = 0; i < static_cast<int>(sparchA[j].size()); i++) {
         A[j].push_back(sparchA[j][i]);
       }
     }
+
+    delete[] sparchA;
+    delete[] sparchAi;
   }
 
   long long totalempty = 0;
@@ -183,7 +232,7 @@ int main(int argc, char *argv[]) {
   long long totaltagmatch48 = 0;
   long long totaltagmatch16 = 0;
 
-  for (int i = 1; i <= I + 2; i++) {
+  for (int i = 1; i < I; i++) {
     offsetarrayA[i] = offsetarrayA[i - 1] + A[i - 1].size();
     if (A[i - 1].size() < 48) {
       totalempty += (48 - A[i - 1].size());
@@ -200,7 +249,7 @@ int main(int argc, char *argv[]) {
   printf("** ratio tag access 48 %lf\n", I / ((double)I + totaltagmatch48));
   printf("** ratio tag access 16 %lf\n", I / ((double)I + totaltagmatch16));
 
-  for (int i = 1; i <= J + 2; i++) {
+  for (int i = 1; i < J + 2; i++) {
     offsetarrayAc[i] = offsetarrayAc[i - 1] + Ac[i - 1].size();
   }
 
@@ -239,6 +288,9 @@ int main(int argc, char *argv[]) {
   printf("Matrix B: %d x %d, number of non-zeros = %d\n", N, M, nzB);
   fflush(stdout);
 
+  // FIXME(ejs): This is extremely confusing. It should not automatically try to invert the matrix
+  // if (and only if !!?) it is non-square. The user should be responsible for storing a separate transpose
+  // version of the matrix (or add some intermediate helper that does the transposition).
   if (N != M)
     transpose ^= 1; // when transposeA = 0 -> transposeB = 1; when tranposeA=
                     // 1-> transposeB = 0
@@ -255,6 +307,8 @@ int main(int argc, char *argv[]) {
   }
 
   K = M;
+
+  initialize_data_B();
 
   // std::getline(std::cin, input);
 
@@ -299,31 +353,31 @@ int main(int argc, char *argv[]) {
     }
 
     if (transpose) {
-      Bc[xx].push_back(yy);
-      B[yy].push_back(xx);
+      Bc[xx - 1].push_back(yy - 1);
+      B[yy - 1].push_back(xx - 1);
     } else {
-      B[xx].push_back(yy);
-      Bc[yy].push_back(xx);
+      B[xx - 1].push_back(yy - 1);
+      Bc[yy - 1].push_back(xx - 1);
     }
   }
 
   // cout << N << endl<<M <<endl<< nz << endl << nz/N <<endl;
 
-  for (int j = 0; j <= J; j++) {
+  for (int j = 0; j < J; j++) {
     sort(B[j].begin(), B[j].end());
   }
-  for (int k = 0; k <= K; k++) {
+  for (int k = 0; k < K; k++) {
     sort(Bc[k].begin(), Bc[k].end());
   }
 
-  for (int j = 1; j <= J + 2; j++) {
+  for (int j = 1; j < J; j++) {
     int tmplen = B[j - 1].size();
     offsetarrayB[j] = offsetarrayB[j - 1] + tmplen;
 
     // the actual access size
-    tmplen = tmplen * 3;
+    tmplen = tmplen * 3; // NOTE(ejs): wtf is this 3 supposed to mean?
 
-    int freqj = (offsetarrayAc[j + 1] - offsetarrayAc[j]);
+    // int freqj = (offsetarrayAc[j + 1] - offsetarrayAc[j]);
   }
   // two problem:
   // 1) this calculate way just calculate the minimum
@@ -334,17 +388,16 @@ int main(int argc, char *argv[]) {
   // move this to above for the weights (1 -> )
   // shortpart += J/(CACHEBLOCKSHORT);
 
-  for (int k = 1; k <= K + 2; k++) {
+  for (int k = 1; k < K; k++) {
     offsetarrayBc[k] = offsetarrayBc[k - 1] + Bc[k - 1].size();
   }
 
-  if (ISCACHE == 1) {
-
-    SET = cachesize / (CACHEBLOCK * SETASSOC);
-    SETLOG = getlog(SET);
-  }
 
   sampleB();
+
+  if(ISCACHE==1) {
+    setSET();
+  }
 
   /******************Config************************************/
 
@@ -374,22 +427,30 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  long long SmallestTile = ((long long)pbound) * J;
+  // long long SmallestTile = ((long long)pbound) * J;
 
-  int kbound = getkbound();
-  int jbound = getjbound();
-  int ibound = getibound();
+  // int kbound = getkbound();
+  // int jbound = getjbound();
+  // int ibound = getibound();
 
   int usesearchedtile = 1;
-  if (usesearchedtile) {
+  if (usesearchedtile) { // NOTE(ejs): this branch is **useless** (it is always taken)
 
     ISDYNAMICJ = 0;
     ISDYNAMICK = 0;
     ISDYNAMICI = 0;
 
-    freopen((tile_dir + matrix_name1).c_str(), "r", stdin);
     int t_i, t_j, t_k;
-    scanf("%d%d%d", &t_i, &t_j, &t_k);
+
+    if(!freopen((tile_dir + matrix_name1).c_str(), "r", stdin)) {
+      std::cerr << "Error opening " << (tile_dir + matrix_name1) << std::endl;
+      return 1;
+    }
+
+    if(std::scanf("%d%d%d", &t_i, &t_j, &t_k) != 3) {
+      std::cerr << "Error reading " << (tile_dir + matrix_name1) << ", expected three integers." << std::endl;
+      return 1;
+    }
     fclose(stdin);
 
     iii = t_i;
@@ -399,23 +460,39 @@ int main(int argc, char *argv[]) {
     ttj = (J + jjj - 1) / jjj;
     ttk = (K + kkk - 1) / kkk;
 
+    initialize_simulator();
+
     /////////////// Baseline configurations
 
     if (baselinetest) {
+      // EWH
+      // Incorporate SeaCache into baseline
+      puts("***************** SeaCache *******************");
+      printf("nnzB:%d  K:%d  J/TJ:%d  nzlB:%d\n", nzB, K, (J + jjj - 1) / jjj,
+             nzB / (K * ((J + jjj - 1) / jjj)));
+
+      adaptive_prefetch = 1;
+      useVirtualTag = 1;
+      cacheScheme = CACHE_SCHEME_FLFU;
+      cachesize = inputcachesize;
+
+      runTile(0, iii, jjj, kkk, tti, ttk, ttj, 0);
+
+      adaptive_prefetch = 0;
+      useVirtualTag = 0;
 
       adaptive_prefetch = 0;
 
       ////////////  InnserSP
       // static FLRU + 16 words scheme0
-      puts("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!   test InnerSP   "
+      puts("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!   test InnerSP   "
            "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
       prefetchSize = inputcachesize / 6;
-      cacheScheme = 11100;
+      cacheScheme = CACHE_SCHEME_INNER_SP;
       cachesize = inputcachesize;
       CACHEBLOCK = 16;
       CACHEBLOCKLOG = 4;
-      SET = cachesize / (CACHEBLOCK * SETASSOC);
-      SETLOG = getlog(SET);
+      setSET();
       runTile(0, iii, jjj, kkk, tti, ttk, ttj, 0);
 
       fflush(stdout);
@@ -425,37 +502,32 @@ int main(int argc, char *argv[]) {
       puts("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!   test Sparch   "
            "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
       ISCACHE = 1;
-      cacheScheme = 11101;
+      cacheScheme = CACHE_SCHEME_SPARCH;
       prefetchSize = inputcachesize / 6;
       cachesize = inputcachesize - prefetchSize;
       CACHEBLOCK = 144;
       CACHEBLOCKLOG = 8;
-      SET = cachesize / (CACHEBLOCK * SETASSOC);
-      SETLOG = getlog(SET);
+      setSET();
       // calculate metadata overhead.
       // if metadata overflow, choose smaller tile
-      int keepkkk = kkk;
-      int keepttk = ttk;
+      int newkkk = kkk;
+      int newttk = ttk;
       // if can keep, just use current kkk
       if (cachesize > kkk * 2) {
         cachesize -= kkk * 2;
       } else {
         // if can't keep, use smaller kkk
         // (make kkk*2 to be half cachesize)
-        kkk = cachesize / 4;
-        ttk = (K + kkk - 1) / kkk;
+        newkkk = cachesize / 4;
+        newttk = (K + kkk - 1) / kkk;
         cachesize -= kkk * 2;
       }
-      runTile(0, iii, jjj, kkk, tti, ttk, ttj, 0);
-      // return to the selected tile size.
-      kkk = keepkkk;
-      ttk = keepttk;
+      runTile(0, iii, jjj, newkkk, tti, newttk, ttj, 0);
       // return to the default setting
       CACHEBLOCK = 16;
       CACHEBLOCKLOG = 4;
       cachesize = inputcachesize;
-      SET = cachesize / (CACHEBLOCK * SETASSOC);
-      SETLOG = getlog(SET);
+      setSET();
 
       fflush(stdout);
 
@@ -465,18 +537,17 @@ int main(int argc, char *argv[]) {
       // LRU + 4 words scheme0
       // just same as using scheme0 with cacheline = 4
       ISCACHE = 1;
-      cacheScheme = 0;
+      cacheScheme = CACHE_SCHEME_BASE;
       cachesize = inputcachesize;
       CACHEBLOCK = 4;
       CACHEBLOCKLOG = 2;
-      SET = cachesize / (CACHEBLOCK * SETASSOC);
-      SETLOG = getlog(SET);
+      setSET();
       runTile(0, iii, jjj, kkk, tti, ttk, ttj, 0);
+
       // return to the default setting
       CACHEBLOCK = 16;
       CACHEBLOCKLOG = 4;
-      SET = cachesize / (CACHEBLOCK * SETASSOC);
-      SETLOG = getlog(SET);
+      setSET();
 
       fflush(stdout);
 
@@ -489,27 +560,21 @@ int main(int argc, char *argv[]) {
 
       run();
 
-      return 0;
     }
 
-    bool testseacache = 1;
-    if (testseacache) {
-
-      puts("\n***************** SeaCache *******************");
-
+    if (!baselinetest) {
+      puts("\n!!!!!!!!!!!!!!!!!!!! EECS570 !!!!!!!!!!!!!!!!!!!!");
+            
+      /*****************************************
       adaptive_prefetch = 1;
-
-      printf("nnzB:%d  K:%d  J/TJ:%d  nzlB:%d\n", nzB, K, (J + jjj - 1) / jjj,
-             nzB / (K * ((J + jjj - 1) / jjj)));
-
-      useVirtualTag = 1;
-      cacheScheme = 88;
+      useVirtualTag = 2;
+      cacheScheme;
       cachesize = inputcachesize;
 
       runTile(0, iii, jjj, kkk, tti, ttk, ttj, 0);
-
       adaptive_prefetch = 0;
       useVirtualTag = 0;
+      *****************************************/
     }
 
     bool ablationtest = 0;
@@ -523,10 +588,9 @@ int main(int argc, char *argv[]) {
            "!!!!!!!!!!!!!!!!!!!!!!!!");
       puts("CacheScheme 0");
       ISCACHE = 1;
-      cacheScheme = 0;
+      cacheScheme = CACHE_SCHEME_BASE;
       cachesize = inputcachesize;
-      SET = cachesize / (CACHEBLOCK * SETASSOC);
-      SETLOG = getlog(SET);
+      setSET();
       runTile(0, iii, jjj, kkk, tti, ttk, ttj, 0);
 
       puts("\n!!!!!!!!!!!!!!!!!!!!!!!!!! scheme1 (mapping)   "
@@ -534,17 +598,16 @@ int main(int argc, char *argv[]) {
 
       puts("CacheScheme 1");
       ISCACHE = 1;
-      cacheScheme = 1;
+      cacheScheme = CACHE_SCHEME_MAPPING;
       cachesize = inputcachesize;
-      SET = cachesize / (CACHEBLOCK * SETASSOC);
-      SETLOG = getlog(SET);
+      setSET();
       runTile(0, iii, jjj, kkk, tti, ttk, ttj, 0);
 
       puts("\n!!!!!!!!!!!!!!!!!!!!!!!!!! scheme88 without virtue   "
            "!!!!!!!!!!!!!!!!!!!!!!!!");
 
       useVirtualTag = 0;
-      cacheScheme = 88;
+      cacheScheme = CACHE_SCHEME_FLFU;
       cachesize = inputcachesize;
       prefetchSize = cachesize / 6;
       runTile(0, iii, jjj, kkk, tti, ttk, ttj, 0);
@@ -554,7 +617,7 @@ int main(int argc, char *argv[]) {
 
       puts("CacheScheme 88 practical FLFU  with virtual tag 1/6");
       useVirtualTag = 1;
-      cacheScheme = 88;
+      cacheScheme = CACHE_SCHEME_FLFU;
       cachesize = inputcachesize;
       prefetchSize = cachesize / 6;
       runTile(0, iii, jjj, kkk, tti, ttk, ttj, 0);
@@ -562,7 +625,7 @@ int main(int argc, char *argv[]) {
 
       puts("CacheScheme 88 practical FLFU  with virtual tag 1/16");
       useVirtualTag = 1;
-      cacheScheme = 88;
+      cacheScheme = CACHE_SCHEME_FLFU;
       cachesize = inputcachesize;
       prefetchSize = cachesize / 16;
       runTile(0, iii, jjj, kkk, tti, ttk, ttj, 0);

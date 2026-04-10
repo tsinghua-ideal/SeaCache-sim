@@ -5,20 +5,20 @@
 #include "statistics.h"
 
 // store all the buffered C now
-set<int> bufferedC[MAXN];
+set<int> *bufferedC = nullptr;
 // record length of buffered C
 // equals bufferedC[i].size()
-int bufferedClen[MAXN];
+int *bufferedClen = nullptr;
 
 int BLOCKSIZE = 16;
 
-int beginA[MAXN];
-int beginB[MAXN];
+int *beginA = nullptr;
+int *beginB = nullptr;
 
-int beginAc[MAXN];
-int beginBc[MAXN];
+int *beginAc = nullptr;
+int *beginBc = nullptr;
 
-int begin[MAXN];
+// int *begin = nullptr;
 
 /*
 The current fiber size of each array
@@ -28,11 +28,11 @@ stored according to the dataflow order
 update currsize each time the block of the array changes
 (when inter-iterate)
 */
-int currsizeA[MAXN];
-int currsizeAc[MAXN];
-int currsizeB[MAXN];
-int currsizeBc[MAXN];
-int currsizeC[MAXN];
+int *currsizeA = nullptr;
+int *currsizeAc = nullptr;
+int *currsizeB = nullptr;
+int *currsizeBc = nullptr;
+// int *currsizeC = nullptr;
 
 /*
 The currently buffered size of each array
@@ -40,11 +40,11 @@ The currently buffered size of each array
 
 update bufferedsize each time
 */
-int bufferedsizeA[MAXN];
-int bufferedsizeB[MAXN];
-int bufferedsizeC[MAXN];
+int *bufferedsizeA = nullptr;
+int *bufferedsizeB = nullptr;
+// int *bufferedsizeC = nullptr;
 
-int tmpC[MAXN];
+int *tmpC = nullptr;
 
 // start of current block
 int TI, TJ, TK;
@@ -114,8 +114,8 @@ void updateBlockA() {
       if (ti > I)
         break;
 
-      int startj = beginA[ti], tmpj = beginA[ti],
-          maxj = offsetarrayA[ti + 1] - offsetarrayA[ti];
+      int startj = beginA[ti], tmpj = beginA[ti];
+      int maxj = offsetarrayA[ti + 1] - offsetarrayA[ti];
 
       // jjj -> ((ISDYNAMICJ)?dynj:jjj)
 
@@ -139,8 +139,8 @@ void updateBlockA() {
       if (tj > J)
         break;
 
-      int starti = beginAc[tj], tmpi = beginAc[tj],
-          maxi = offsetarrayAc[tj + 1] = offsetarrayAc[tj];
+      int starti = beginAc[tj], tmpi = beginAc[tj];
+      int maxi = offsetarrayAc[tj + 1] = offsetarrayAc[tj];
 
       while (tmpi < maxi && Ac[tj][tmpi] < iii + TI) {
         tmpi++;
@@ -199,7 +199,9 @@ void updateBlockC() {
 void forcebeginA() {
   for (int i = 0; i < I; i++) {
 
-    int startj = 0, tmpj = 0, maxj = offsetarrayA[i + 1] - offsetarrayA[i];
+    // int startj = 0;
+    int tmpj = 0;
+    int maxj = offsetarrayA[i + 1] - offsetarrayA[i];
 
     // here is TJ because TJ have added jjj before call the func
     while (tmpj < maxj && A[i][tmpj] < TJ) {
@@ -210,7 +212,9 @@ void forcebeginA() {
   }
 
   for (int tj = 0; tj < J; tj++) {
-    int starti = 0, tmpi = 0, maxi = offsetarrayAc[tj + 1] - offsetarrayAc[tj];
+    // int starti = 0;
+    int tmpi = 0;
+    int maxi = offsetarrayAc[tj + 1] - offsetarrayAc[tj];
 
     while (tmpi < maxi && Ac[tj][tmpi] < TI) {
       tmpi++;
@@ -223,7 +227,9 @@ void forcebeginB() {
 
   for (int tj = 0; tj < J; tj++) {
 
-    int startk = 0, tmpk = 0, maxk = offsetarrayB[tj + 1] - offsetarrayB[tj];
+    // int startk = 0;
+    int tmpk = 0;
+    int maxk = offsetarrayB[tj + 1] - offsetarrayB[tj];
 
     while (tmpk < maxk && B[tj][tmpk] < TK) {
       tmpk++;
@@ -234,7 +240,9 @@ void forcebeginB() {
 
   for (int tk = 0; tk < K; tk++) {
 
-    int startj = 0, tmpj = 0, maxj = offsetarrayBc[tk + 1] - offsetarrayBc[tk];
+    // int startj = 0;
+    int tmpj = 0;
+    int maxj = offsetarrayBc[tk + 1] - offsetarrayBc[tk];
 
     while (tmpj < maxj && Bc[tk][tmpj] < TJ) {
       tmpj++;
@@ -250,8 +258,9 @@ void updateBeginA() {
     if (ti > I)
       break;
 
-    int startj = beginA[ti], tmpj = beginA[ti],
-        maxj = offsetarrayA[ti + 1] - offsetarrayA[ti];
+    // int startj = beginA[ti];
+    int tmpj = beginA[ti];
+    int maxj = offsetarrayA[ti + 1] - offsetarrayA[ti];
 
     // here is TJ because TJ have added jjj before call the func
     while (tmpj < maxj && A[ti][tmpj] < TJ) {
@@ -267,8 +276,9 @@ void ALLupdateBeginAc() {
     if (tj > J)
       break;
 
-    int starti = beginAc[tj], tmpi = beginAc[tj],
-        maxi = offsetarrayAc[tj + 1] - offsetarrayAc[tj];
+    // int starti = beginAc[tj];
+    int tmpi = beginAc[tj];
+    int maxi = offsetarrayAc[tj + 1] - offsetarrayAc[tj];
 
     while (tmpi < maxi && Ac[tj][tmpi] < TI) {
       tmpi++;
@@ -283,8 +293,9 @@ void AllupdateBeginA() {
     if (ti > I)
       break;
 
-    int startj = beginA[ti], tmpj = beginA[ti],
-        maxj = offsetarrayA[ti + 1] - offsetarrayA[ti];
+    // int startj = beginA[ti];
+    int tmpj = beginA[ti];
+    int maxj = offsetarrayA[ti + 1] - offsetarrayA[ti];
     while (tmpj < maxj && A[ti][tmpj] < TJ) {
       tmpj++;
     }
@@ -300,8 +311,9 @@ void updateBeginAc() {
     if (tj > J)
       break;
 
-    int starti = beginAc[tj], tmpi = beginAc[tj],
-        maxi = offsetarrayAc[tj + 1] - offsetarrayAc[tj];
+    // int starti = beginAc[tj];
+    int tmpi = beginAc[tj];
+    int maxi = offsetarrayAc[tj + 1] - offsetarrayAc[tj];
 
     while (tmpi < maxi && Ac[tj][tmpi] < TI) {
       tmpi++;
@@ -318,8 +330,9 @@ void AllupdateBeginB() {
     if (tj > J)
       break;
 
-    int startk = beginB[tj], tmpk = beginB[tj],
-        maxk = offsetarrayB[tj + 1] - offsetarrayB[tj];
+    // int startk = beginB[tj];
+    int tmpk = beginB[tj];
+    int maxk = offsetarrayB[tj + 1] - offsetarrayB[tj];
 
     while (tmpk < maxk && B[tj][tmpk] < TK) {
       tmpk++;
@@ -336,8 +349,9 @@ void AllupdateBeginBc() {
     if (tk > K)
       break;
 
-    int startj = beginBc[tk], tmpj = beginBc[tk],
-        maxj = offsetarrayBc[tk + 1] - offsetarrayBc[tk];
+    // int startj = beginBc[tk]; 
+    int tmpj = beginBc[tk];
+    int maxj = offsetarrayBc[tk + 1] - offsetarrayBc[tk];
 
     while (tmpj < maxj && Bc[tk][tmpj] < TJ) {
       tmpj++;
@@ -355,8 +369,9 @@ void updateBeginB() {
     if (tj > J)
       break;
 
-    int startk = beginB[tj], tmpk = beginB[tj],
-        maxk = offsetarrayB[tj + 1] - offsetarrayB[tj];
+    // int startk = beginB[tj];
+    int tmpk = beginB[tj];
+    int maxk = offsetarrayB[tj + 1] - offsetarrayB[tj];
 
     while (tmpk < maxk && B[tj][tmpk] < TK) {
       tmpk++;
@@ -373,8 +388,9 @@ void updateBeginBc() {
     if (tk > K)
       break;
 
-    int startj = beginBc[tk], tmpj = beginBc[tk],
-        maxj = offsetarrayBc[tk + 1] - offsetarrayBc[tk];
+    // int startj = beginBc[tk];
+    int tmpj = beginBc[tk];
+    int maxj = offsetarrayBc[tk + 1] - offsetarrayBc[tk];
 
     while (tmpj < maxj && Bc[tk][tmpj] < TJ) {
       tmpj++;
@@ -1086,7 +1102,8 @@ void pre_load_B() {
 
       // equals to 0(when jjj in the first half) or 1(when jjj in the second
       // half);
-      int _TJ, _TK;
+      int _TJ;
+      // int _TK;
 
       for (tj = TJ; tj < TJ + jjj; tj++) {
         if (tj > J)
@@ -1663,7 +1680,7 @@ void get_A_fiber_col(int jj) {
       computeSramAccess += sramReadBandwidth(currsizeAc[jj] * 3 + 2) +
                            sramWriteBandwidth(currsizeAc[jj] * 3 + 2);
 
-      if (cacheScheme == 11100) {
+      if (cacheScheme == CACHE_SCHEME_INNER_SP) {
         // double A access in static FLRU scheme
         computeDramAccess += memoryBandwidthPE(currsizeAc[jj] * 3 + 2);
         computeA += memoryBandwidthPE(currsizeAc[jj] * 3 + 2);
@@ -1699,7 +1716,7 @@ void get_A_fiber(int ii) {
       // hit
       computeSramAccess += sramReadBandwidth(currsizeA[ii] * 3 + 2);
 
-      if (cacheScheme == 11100) {
+      if (cacheScheme == CACHE_SCHEME_INNER_SP) {
         // double A access in static FLRU scheme
         computeSramAccess += sramReadBandwidth(currsizeA[ii] * 3 + 2);
       }
@@ -1711,7 +1728,7 @@ void get_A_fiber(int ii) {
       computeSramAccess += sramReadBandwidth(currsizeA[ii] * 3 + 2) +
                            sramWriteBandwidth(currsizeA[ii] * 3 + 2);
 
-      if (cacheScheme == 11100) {
+      if (cacheScheme == CACHE_SCHEME_INNER_SP) {
         // double A access in static FLRU scheme
         computeDramAccess += memoryBandwidthPE(currsizeA[ii] * 3 + 2);
         computeA += memoryBandwidthPE(currsizeA[ii] * 3 + 2);
@@ -1755,7 +1772,7 @@ void updateCAccess(int ii) {
     // check the delta buffer: how many new C elements (indicate how many
     // increase)
     int deltaC = 0;
-    int oldsize = bufferedClen[ii];
+    // int oldsize = bufferedClen[ii];
     for (int k1 = TK; k1 < TK + ((ISDYNAMICK) ? dynk : kkk); k1++) {
       if (tmpC[k1]) {
         // the k1 is a new element
@@ -1863,7 +1880,7 @@ void get_B_fibers(int ii) {
         if (fulltagA == 0 || ii < fullA) {
           // hit
           computeSramAccess += sramReadBandwidth((tmpj - beginA[ii]) * 3);
-          if (cacheScheme == 11100) {
+          if (cacheScheme == CACHE_SCHEME_INNER_SP) {
             computeSramAccess += sramReadBandwidth((tmpj - beginA[ii]) * 3);
           }
         } else {
@@ -1874,7 +1891,7 @@ void get_B_fibers(int ii) {
           computeSramAccess += sramReadBandwidth((tmpj - beginA[ii]) * 3) +
                                sramWriteBandwidth((tmpj - beginA[ii]) * 3);
 
-          if (cacheScheme == 11100) {
+          if (cacheScheme == CACHE_SCHEME_INNER_SP) {
             computeDramAccess += memoryBandwidthPE((tmpj - beginA[ii]) * 3);
             computeA += memoryBandwidthPE((tmpj - beginA[ii]) * 3);
             computeSramAccess += sramReadBandwidth((tmpj - beginA[ii]) * 3) +
@@ -1889,7 +1906,7 @@ void get_B_fibers(int ii) {
         computeSramAccess += sramReadBandwidth((tmpj - beginA[ii]) * 3) +
                              sramWriteBandwidth((tmpj - beginA[ii]) * 3);
 
-        if (cacheScheme == 11100) {
+        if (cacheScheme == CACHE_SCHEME_INNER_SP) {
           computeDramAccess += memoryBandwidthPE((tmpj - beginA[ii]) * 3);
           computeA += memoryBandwidthPE((tmpj - beginA[ii]) * 3);
 
@@ -1929,13 +1946,13 @@ int prefetchRowNow = 0;
 
 bool prefetchrow(int ii) {
 
-  int needsize;
+  int needsize = 0;
   // FLRU mode; need 2data+1coord+1next pointer (*4)
   if (cacheScheme == 6 || cacheScheme == 7) {
     needsize = currsizeA[ii] * 4 + 1;
   }
   // FLFU mode; don't need next pointer (*3)
-  if (cacheScheme == 66 || cacheScheme == 88) {
+  else if (cacheScheme == 66 || cacheScheme == CACHE_SCHEME_FLFU) {
     needsize = currsizeA[ii] * 3;
   }
 
@@ -1954,8 +1971,8 @@ bool prefetchrow(int ii) {
     // in this prefetch: push the next access queue of jj a ii
     int jj = A[ii][tmpj];
 
-    if (cacheScheme == 6 || cacheScheme == 7 || cacheScheme == 11100 ||
-        cacheScheme == 11101) {
+    if (cacheScheme == 6 || cacheScheme == 7 || cacheScheme == CACHE_SCHEME_INNER_SP ||
+        cacheScheme == CACHE_SCHEME_SPARCH) {
       nextposvector[jj].push(-ii);
     }
     if (cacheScheme == 66) {
@@ -1963,7 +1980,7 @@ bool prefetchrow(int ii) {
     }
 
     // practical flfu. update in the flubit
-    if (cacheScheme == 88) {
+    if (cacheScheme == CACHE_SCHEME_FLFU) {
 
       long long firstaddr = getCacheAddr(jj, 0);
       int fibersize = currsizeB[jj] * 3;
@@ -1979,24 +1996,24 @@ bool prefetchrow(int ii) {
         prefetch_increments++;
 
         for (int i = 0; i < SETASSOC; i++) {
-          if (Valid[_set][i] && (Tag[_set][i] == _tag)) {
+          if (Valid[_set * SETASSOC + i] && (Tag[_set * SETASSOC + i] == _tag)) {
 
             // not the first, need to check orig
             if (tmpcurr != 0) {
-              if (PosOrig[_set][i] != getOrig(firstaddr)) {
+              if (PosOrig[_set * SETASSOC + i] != getOrig(firstaddr)) {
                 // not the same orig
                 continue;
               }
             } else {
-              if (PosOrig[_set][i] != 0) {
+              if (PosOrig[_set * SETASSOC + i] != 0) {
                 continue;
               }
             }
             // hit
             incache = 1;
-            lfubit[_set][i]++;
+            lfubit[_set * SETASSOC + i]++;
             // if the updated flfu bit overflow
-            if (lfubit[_set][i] > LFUmax) {
+            if (lfubit[_set * SETASSOC + i] > LFUmax) {
               needhalf = 1;
             }
             break;
@@ -2008,12 +2025,12 @@ bool prefetchrow(int ii) {
           if (!incache) {
             bool invirtualtag = 0;
             for (int i = 0; i < VIRTUALSETASSOC; i++) {
-              if (virtualValid[_set][i]) {
-                if (virtualTag[_set][i] == _tag) {
+              if (virtualValid[_set * VIRTUALSETASSOC + i]) {
+                if (virtualTag[_set * VIRTUALSETASSOC + i] == _tag) {
                   // in virtual
                   invirtualtag = 1;
-                  virtuallfubit[_set][i]++;
-                  if (virtuallfubit[_set][i] > LFUmax) {
+                  virtuallfubit[_set * VIRTUALSETASSOC + i]++;
+                  if (virtuallfubit[_set * VIRTUALSETASSOC + i] > LFUmax) {
                     needhalf = 1;
                   }
                   // if find a matched, don't need to check others
@@ -2027,13 +2044,13 @@ bool prefetchrow(int ii) {
 
               bool hasinvalid = 0;
               for (int i = 0; i < VIRTUALSETASSOC; i++) {
-                if (virtualValid[_set][i] == 0) {
+                if (virtualValid[_set * VIRTUALSETASSOC + i] == 0) {
                   // has invalide!
                   hasinvalid = 1;
                   // put the slot here
-                  virtualValid[_set][i] = 1;
-                  virtualTag[_set][i] = _tag;
-                  virtuallfubit[_set][i] = 1;
+                  virtualValid[_set * VIRTUALSETASSOC + i] = 1;
+                  virtualTag[_set * VIRTUALSETASSOC + i] = _tag;
+                  virtuallfubit[_set * VIRTUALSETASSOC + i] = 1;
                   break;
                 }
               }
@@ -2041,12 +2058,12 @@ bool prefetchrow(int ii) {
               if (!hasinvalid) {
 
                 for (int i = 0; i < VIRTUALSETASSOC; i++) {
-                  if (virtuallfubit[_set][i] == 0) {
+                  if (virtuallfubit[_set * VIRTUALSETASSOC + i] == 0) {
                     // find a slot = 0, replace it to the current fiber
                     haszero = 1;
-                    virtualValid[_set][i] = 1;
-                    virtualTag[_set][i] = _tag;
-                    virtuallfubit[_set][i] = 1;
+                    virtualValid[_set * VIRTUALSETASSOC + i] = 1;
+                    virtualTag[_set * VIRTUALSETASSOC + i] = _tag;
+                    virtuallfubit[_set * VIRTUALSETASSOC + i] = 1;
 
                     break;
                   }
@@ -2064,8 +2081,8 @@ bool prefetchrow(int ii) {
         // both update in cache or virtual tag will cause the half
         if (needhalf) {
           for (int i = 0; i < SETASSOC; i++) {
-            if (Valid[_set][i]) {
-              lfubit[_set][i] /= 2;
+            if (Valid[_set * SETASSOC + i]) {
+              lfubit[_set * SETASSOC + i] /= 2;
             }
           }
 
@@ -2074,8 +2091,8 @@ bool prefetchrow(int ii) {
           // but is 0 now, then will be replace, but actually better
           if (useVirtualTag) {
             for (int i = 0; i < VIRTUALSETASSOC; i++) {
-              if (virtualValid[_set][i]) {
-                virtuallfubit[_set][i] /= 2;
+              if (virtualValid[_set * VIRTUALSETASSOC + i]) {
+                virtuallfubit[_set * VIRTUALSETASSOC + i] /= 2;
               }
             }
           }
@@ -2093,15 +2110,16 @@ bool prefetchrow(int ii) {
   return 1;
 }
 
-void initialize_adaptive_prefetch(long long nnzA, long long nnzB, int K, int J,
-                                  int T_J) {
+// void initialize_adaptive_prefetch(long long nnzA, long long nnzB, int K, int J,
+//                                   int T_J) {
+void initialize_adaptive_prefetch(long long, long long, int, int, int) {
   // --- Offline Phase ---
-  double avg_nonzero_length_B;
-  if (K > 0 && T_J > 0) {
-    avg_nonzero_length_B = static_cast<double>(nnzB) / K;
-  } else {
-    avg_nonzero_length_B = 1.0;
-  }
+  // double avg_nonzero_length_B;
+  // if (K > 0 && T_J > 0) {
+  //   avg_nonzero_length_B = static_cast<double>(nnzB) / K;
+  // } else {
+  //   avg_nonzero_length_B = 1.0;
+  // }
 
   current_prefetch_size = 1.0 / 128.0;
 
@@ -2169,8 +2187,7 @@ void update_prefetch_size() {
     } else {
       current_discard_rate = ((double)prefetch_discards) / prefetch_increments;
     }
-    double current_no_counter_miss_rate =
-        ((double)data_access_misses) / data_access_total;
+    // double current_no_counter_miss_rate = static_cast<double>(data_access_misses) / data_access_total;
     // printf("Discard Rate: %lf, %d %d \n", current_discard_rate,
     //        prefetch_discards, prefetch_increments);
 
@@ -2266,8 +2283,7 @@ void update_prefetch_size() {
   } else {
     current_discard_rate = ((double)prefetch_discards) / prefetch_increments;
   }
-  double current_no_counter_miss_rate =
-      ((double)data_access_misses) / data_access_total;
+  // double current_no_counter_miss_rate = static_cast<double>(data_access_misses) / data_access_total;
   // printf("Discard Rate: %lf, %d %d \n", current_discard_rate,
   // prefetch_discards,
   //       prefetch_increments);
@@ -2335,10 +2351,10 @@ void calculate() {
 
       // all prefetch scheme
       if (cacheScheme == 6 || cacheScheme == 7 || cacheScheme == 66 ||
-          cacheScheme == 88 || cacheScheme == 11100 || cacheScheme == 11101) {
+          cacheScheme == CACHE_SCHEME_FLFU || cacheScheme == CACHE_SCHEME_INNER_SP || cacheScheme == CACHE_SCHEME_SPARCH) {
         // reinitialize the next pointer for FLRU
-        if (cacheScheme == 6 || cacheScheme == 7 || cacheScheme == 11100 ||
-            cacheScheme == 11101) {
+        if (cacheScheme == 6 || cacheScheme == 7 || cacheScheme == CACHE_SCHEME_INNER_SP ||
+            cacheScheme == CACHE_SCHEME_SPARCH) {
           for (int j1 = TJ; j1 < TJ + jjj; j1++) {
             if (j1 > J)
               break;
@@ -2378,15 +2394,15 @@ void calculate() {
         // update the prefetch window after each row
         // don't need to update prefetch window in static flru
         if (cacheScheme == 6 || cacheScheme == 7 || cacheScheme == 66 ||
-            cacheScheme == 88 || cacheScheme == 11100 || cacheScheme == 11101) {
+            cacheScheme == CACHE_SCHEME_FLFU || cacheScheme == CACHE_SCHEME_INNER_SP || cacheScheme == CACHE_SCHEME_SPARCH) {
 
           // first minus this row's overhead
           int needsize = 0;
-          if (cacheScheme == 6 || cacheScheme == 7 || cacheScheme == 11101) {
+          if (cacheScheme == 6 || cacheScheme == 7 || cacheScheme == CACHE_SCHEME_SPARCH) {
             needsize = currsizeA[TI + ii] * 4 + 1;
           }
           // FLFU mode; don't need next pointer (*3)
-          if (cacheScheme == 66 || cacheScheme == 88) {
+          if (cacheScheme == 66 || cacheScheme == CACHE_SCHEME_FLFU) {
             needsize = currsizeA[TI + ii] * 3;
           }
 
@@ -2424,7 +2440,8 @@ void calculate() {
 
       for (int ii = 0; ii < iii; ii++) {
 
-        int cnew = 0, cnow = 0;
+        // int cnew = 0;
+  int cnow = 0;
 
         // update A
         // get A
@@ -2613,8 +2630,65 @@ void configPartial(float partialA, float partialB, float partialC) {
   }
 }
 
-void reinitialize() {
+void initialize_simulator() {
+  // alloacte memory
+  try {
+    if(bufferedC == nullptr) bufferedC = new set<int>[I]();
+    if(bufferedClen == nullptr) bufferedClen = new int[I]();
+    if(beginA == nullptr) beginA = new int[I]();
+    if(beginB == nullptr) beginB = new int[J]();
 
+    if(beginAc == nullptr) beginAc = new int[J]();
+    if(beginBc == nullptr) beginBc = new int[K]();
+
+    // if(begin == nullptr) new int[];
+
+    if(currsizeA == nullptr) currsizeA = new int[I]();
+    if(currsizeAc == nullptr) currsizeAc = new int[J]();
+    if(currsizeB == nullptr) currsizeB = new int[J]();
+    if(currsizeBc == nullptr) currsizeBc = new int[J]();
+    // if(currsizeC == nullptr) new int[K];
+
+    if(bufferedsizeA == nullptr) bufferedsizeA = new int[I]();
+    if(bufferedsizeB == nullptr) bufferedsizeB = new int[J]();
+    // if(bufferedsizeC == nullptr) new int[K];
+
+    if(tmpC == nullptr) tmpC = new int[K]();
+
+    if(LFUtag == nullptr) LFUtag = new int[J]();
+    if(nextposvector == nullptr) nextposvector = new queue<int>[J]();
+  } catch (const std::bad_alloc &e) {
+    std::cerr << "Error allocating memory for " << e.what() << std::endl;
+    std::exit(1);
+  }
+  
+}
+
+void deinitialize_simulator() {
+  if(bufferedC != nullptr) delete[] bufferedC;
+  if(bufferedClen != nullptr) delete[] bufferedClen;
+  if(beginA != nullptr) delete[] beginA;
+  if(beginB != nullptr) delete[] beginB;
+
+  if(beginAc != nullptr) delete[] beginAc;
+  if(beginBc != nullptr) delete[] beginBc;
+
+  // if(begin != nullptr) delete[] int[];
+
+  if(currsizeA != nullptr) delete[] currsizeA;
+  if(currsizeAc != nullptr) delete[] currsizeAc;
+  if(currsizeB != nullptr) delete[] currsizeB;
+  if(currsizeBc != nullptr) delete[] currsizeBc;
+  // if(currsizeC != nullptr) delete[] currsizeC;
+
+  if(bufferedsizeA != nullptr) delete[] bufferedsizeA;
+  if(bufferedsizeB != nullptr) delete[] bufferedsizeB;
+  // if(bufferedsizeC != nullptr) delete[] bufferedsizeC;
+
+  if(tmpC != nullptr) delete[] tmpC;
+}
+
+void reinitialize() {
   // reinitialize statistics
   totalCycle = 0;
   preCycle = calCycle = postCycle = 0;
@@ -2636,11 +2710,11 @@ void reinitialize() {
     initializeCacheValid();
 
     if (useVirtualTag) {
-      memset(virtualValid, 0, sizeof(virtualValid));
+      memset(virtualValid, 0, sizeof(bool) * SET * VIRTUALSETASSOC);
     }
 
-    memset(PosOrig, 0, sizeof(PosOrig));
-    memset(vPosOrig, 0, sizeof(vPosOrig));
+    memset(PosOrig, 0, sizeof(short) * SET * SETASSOC);
+    memset(vPosOrig, 0, sizeof(short) * SET * SETASSOC);
   }
 
   // reinitialize buffer c
@@ -2808,7 +2882,7 @@ void run() {
   analyze_statistics();
 }
 
-void runTile(bool isest, int iii, int jjj, int kkk, long long tti,
+void runTile(bool isest, int /* iii */, int jjj, int kkk, long long tti,
              long long ttj, long long ttk, long long SmallestTile) {
 
   // only prunning in the estimation mode
@@ -2822,8 +2896,8 @@ void runTile(bool isest, int iii, int jjj, int kkk, long long tti,
     prefetchNow = 0;
     prefetchRowNow = 0;
 
-    if (cacheScheme == 6 || cacheScheme == 7 || cacheScheme == 11100 ||
-        cacheScheme == 11101) {
+    if (cacheScheme == 6 || cacheScheme == 7 || cacheScheme == CACHE_SCHEME_INNER_SP ||
+        cacheScheme == CACHE_SCHEME_SPARCH) {
       for (int j = 0; j < J; j++) {
         while (!nextposvector[j].empty()) {
           nextposvector[j].pop();
@@ -2836,7 +2910,7 @@ void runTile(bool isest, int iii, int jjj, int kkk, long long tti,
       }
     }
 
-    // prunning
+    // pruning
     if (((long long)jjj * kkk) * 4 < SmallestTile) {
       return;
     }
@@ -2873,7 +2947,7 @@ void runTile(bool isest, int iii, int jjj, int kkk, long long tti,
     setSET();
   }
 
-  if (ISCACHE && (cacheScheme == 88)) {
+  if (ISCACHE && (cacheScheme == CACHE_SCHEME_FLFU)) {
 
     cachesize = inputcachesize - prefetchSize;
 
