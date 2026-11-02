@@ -2349,6 +2349,7 @@ Only in two place :
 */
 void calculate(std::any any) {
   computePE = computeDramAccess = computeSramAccess = 0;
+  for (int p = 0; p < PEcnt; p++) perPEWork[p] = 0; // Hari: reset per-PE tracking each tile
 
   if (dataflow == Gust) {
     LoopQueue.push({calculateGust});
@@ -2587,18 +2588,126 @@ void getBFibersGust(std::any any) {
     LoopQueue.push({finishCalculate});
     return;
   }
+  LoopQueue.push({getBFibersGust_rowStart, ii});
+}
 
-  get_B_fibers(TI + ii);
+// Hari: granular per-jj events, replaces the inline while-loop that used to
+// live inside get_B_fibers(). Same logic, split into queue steps.
 
-  int needsize = currsizeA[TI + ii] * 3;
+void getBFibersGust_rowStart(std::any any) {
+  int localII = std::any_cast<int>(any);
+  int globalII = TI + localII;
+
+  int tmpj = beginA[globalII];
+  int maxj = offsetarrayA[globalII + 1] - offsetarrayA[globalII];
+
+  for (int k1 = TK; k1 < TK + kkk; k1++) {
+    tmpC[k1] = 0;
+  }
+
+  OpsWaitingOnPEsQueueEntry e;
+  e.ii = globalII;
+  e.pe_id = globalII % PEcnt;
+  e.tmpj = tmpj;
+  e.maxj = maxj;
+
+  LoopQueue.push({getBFibersGust_step, e});
+}
+
+void getBFibersGust_step(std::any any) {
+  OpsWaitingOnPEsQueueEntry e = std::any_cast<OpsWaitingOnPEsQueueEntry>(any);
+  int globalII = e.ii;
+  int tmpj = e.tmpj;
+  int maxj = e.maxj;
+
+  if (!(tmpj < maxj && A[globalII][tmpj] < TJ + ((ISDYNAMICJ) ? dynj : jjj))) {
+    e.tmpj = tmpj;
+    LoopQueue.push({getBFibersGust_finish, e});
+    return;
+  }
+
+  int jj = A[globalII][tmpj];
+  get_B_fiber(jj, globalII);
+
+  computePE += currsizeB[jj];
+  perPEWork[e.pe_id] += currsizeB[jj];
+  elements_processed_since_last_adjustment += currsizeB[jj];
+
+  update_c_fiber(jj);
+
+  tmpj++;
+  e.tmpj = tmpj;
+  e.jj = jj;
+  e.work_amount = currsizeB[jj];
+
+  if (offsetarrayA[globalII] + tmpj >= offsetarrayA[globalII + 1]) {
+    LoopQueue.push({getBFibersGust_finish, e});
+    return;
+  }
+
+  LoopQueue.push({getBFibersGust_step, e});
+}
+
+void getBFibersGust_finish(std::any any) {
+  OpsWaitingOnPEsQueueEntry e = std::any_cast<OpsWaitingOnPEsQueueEntry>(any);
+  int globalII = e.ii;
+  int tmpj = e.tmpj;
+  int localII = globalII - TI;
+
+  if (consistent_A()) {
+    if ((interorder == IJK || interorder == JIK)) {
+      if (fulltagA == 0 || globalII < fullA) {
+        computeSramAccess += sramReadBandwidth((tmpj - beginA[globalII]) * 3);
+        if (cacheScheme == 11100) {
+          computeSramAccess += sramReadBandwidth((tmpj - beginA[globalII]) * 3);
+        }
+      } else {
+        computeDramAccess += memoryBandwidthPE((tmpj - beginA[globalII]) * 3);
+        computeA += memoryBandwidthPE((tmpj - beginA[globalII]) * 3);
+        AccessByte += (tmpj - beginA[globalII]) * 3;
+        computeSramAccess += sramReadBandwidth((tmpj - beginA[globalII]) * 3) +
+                             sramWriteBandwidth((tmpj - beginA[globalII]) * 3);
+        if (cacheScheme == 11100) {
+          computeDramAccess += memoryBandwidthPE((tmpj - beginA[globalII]) * 3);
+          computeA += memoryBandwidthPE((tmpj - beginA[globalII]) * 3);
+          computeSramAccess += sramReadBandwidth((tmpj - beginA[globalII]) * 3) +
+                               sramWriteBandwidth((tmpj - beginA[globalII]) * 3);
+        }
+      }
+    } else {
+      computeDramAccess += memoryBandwidthPE((tmpj - beginA[globalII]) * 3);
+      computeA += memoryBandwidthPE((tmpj - beginA[globalII]) * 3);
+      AccessByte += (tmpj - beginA[globalII]) * 3;
+      computeSramAccess += sramReadBandwidth((tmpj - beginA[globalII]) * 3) +
+                           sramWriteBandwidth((tmpj - beginA[globalII]) * 3);
+      if (cacheScheme == 11100) {
+        computeDramAccess += memoryBandwidthPE((tmpj - beginA[globalII]) * 3);
+        computeA += memoryBandwidthPE((tmpj - beginA[globalII]) * 3);
+        computeSramAccess += sramReadBandwidth((tmpj - beginA[globalII]) * 3) +
+                             sramWriteBandwidth((tmpj - beginA[globalII]) * 3);
+      }
+    }
+  } else {
+    computeSramAccess +=
+        sramReadBandwidth(fiberletlength * 3) * ((bufferedsizeB[globalII] + 3) / 4);
+    if (fulltagA) {
+      computeDramAccess += (memoryBandwidthPE(3)) * ((long long)TJ + jjj - fullA);
+      computeA += (memoryBandwidthPE(3)) * (long long)((long long)TJ + jjj - fullA);
+      AccessByte += 3 * ((long long)TJ + jjj - fullA);
+    }
+  }
+
+  updateCAccess(globalII);
+
+  int needsize = currsizeA[globalII] * 3;
   if (prefetchNow > needsize) {
     prefetchNow -= needsize;
   }
 
   if (prefetchNow >= prefetchSize) {
-    LoopQueue.push({getBFibersGust, ii + 1});
+    LoopQueue.push({getBFibersGust, localII + 1});
   } else {
-    LoopQueue.push({prefetchNextRowGust, ii});
+    LoopQueue.push({prefetchNextRowGust, localII});
   }
 }
 

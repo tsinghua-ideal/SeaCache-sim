@@ -49,6 +49,11 @@ void prefetchPrefillWindowGust(std::any any);
 void getBFibersGust(std::any any);
 void prefetchNextRowGust(std::any any);
 
+// Hari: granular per-jj events within get_B_fibers (Gust dataflow)
+void getBFibersGust_rowStart(std::any any);
+void getBFibersGust_step(std::any any);
+void getBFibersGust_finish(std::any any);
+
 // Inner Dataflow Functions - TODO: make more granular
 void calculateInner(std::any any);
 
@@ -100,6 +105,13 @@ struct OpsWaitingOnMemoryQueueEntry : BaseQueueEntry {
 };
 
 struct OpsWaitingOnPEsQueueEntry : BaseQueueEntry {
+    // Hari: fields for per-PE work tracking (design gap: PE idleness from tiling barrier)
+    int pe_id;              // which physical PE, ii % PEcnt
+    int ii;                 // row of A being processed
+    int tmpj;               // current position in A[ii], loop continuation state
+    int maxj;               // end bound for this row (offsetarrayA[ii+1] - offsetarrayA[ii])
+    int jj;                 // B fiber index just processed, A[ii][tmpj]
+    long long work_amount;  // currsizeB[jj], the actual unit of work for this step
 };
 
 struct WritebackQueueEntry : BaseQueueEntry { 
