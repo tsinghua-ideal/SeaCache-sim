@@ -4,6 +4,8 @@
     "memorybandwidth": 68,
     "PEcnt": 32,
     "srambank": 32,
+    "dramChannels": 4,
+    "dramLatency": 100,
     "baselinetest": 0,
     "condensedOP": false,
     "tileDir": "./tiles/",

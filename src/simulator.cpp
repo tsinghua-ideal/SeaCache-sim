@@ -4,6 +4,8 @@
 #include "headers.h"
 #include "queue.h"
 #include "statistics.h"
+#include "memory.h"
+#include "pe.h"
 
 // store all the buffered C now
 set<int> bufferedC[MAXN];
@@ -474,14 +476,14 @@ void iterate_inner_loop(std::any any) {
       if (ISDYNAMICK) {
         dynamicupdatek();
       }
-      LoopQueue.push({inner_loop_before_calculate});
+      schedule(inner_loop_before_calculate);
       return;
     } else {
       TK += ((ISDYNAMICK) ? dynk : kkk);
       if (ISDYNAMICK) {
         dynamicupdatek();
       }
-      LoopQueue.push({iterate_mid_loop});
+      schedule(iterate_mid_loop);
       return;
     }
   } else if ((interorder == IKJ) || (interorder == KIJ)) {
@@ -491,14 +493,14 @@ void iterate_inner_loop(std::any any) {
       if (ISDYNAMICJ) {
         dynamicupdatej();
       }
-      LoopQueue.push({inner_loop_before_calculate});
+      schedule(inner_loop_before_calculate);
       return;
     } else {
       TJ += ((ISDYNAMICJ) ? dynj : jjj);
       if (ISDYNAMICJ) {
         dynamicupdatej();
       }
-      LoopQueue.push({iterate_mid_loop});
+      schedule(iterate_mid_loop);
       return;
     }
   } else if ((interorder == JKI) || (interorder == KJI)) {
@@ -509,7 +511,7 @@ void iterate_inner_loop(std::any any) {
       if (ISDYNAMICI) {
         dynamicupdatei();
       }
-      LoopQueue.push({inner_loop_before_calculate});
+      schedule(inner_loop_before_calculate);
       return;
 
     } else {
@@ -517,12 +519,12 @@ void iterate_inner_loop(std::any any) {
       if (ISDYNAMICI) {
         dynamicupdatei();
       }
-      LoopQueue.push({iterate_mid_loop});
+      schedule(iterate_mid_loop);
       return;
     }
   }
 
-  LoopQueue.push({iterate_mid_loop});
+  schedule(iterate_mid_loop);
   return;
 }
 
@@ -534,14 +536,14 @@ void iterate_mid_loop(std::any any) {
       if (ISDYNAMICK) {
         dynamicupdatek();
       }
-      LoopQueue.push({reinitialize_inner});
+      schedule(reinitialize_inner);
       return;
     } else {
       TK += ((ISDYNAMICK) ? dynk : kkk);
       if (ISDYNAMICK) {
         dynamicupdatek();
       }
-      LoopQueue.push({iterate_outer_loop});
+      schedule(iterate_outer_loop);
       return;
     }
   } else if ((interorder == IJK) || (interorder == KJI)) {
@@ -551,14 +553,14 @@ void iterate_mid_loop(std::any any) {
       if (ISDYNAMICJ) {
         dynamicupdatej();
       }
-      LoopQueue.push({reinitialize_inner});
+      schedule(reinitialize_inner);
       return;
     } else {
       TJ += ((ISDYNAMICJ) ? dynj : jjj);
       if (ISDYNAMICJ) {
         dynamicupdatej();
       }
-      LoopQueue.push({iterate_outer_loop});
+      schedule(iterate_outer_loop);
       return;
     }
   } else if ((interorder == JIK) || (interorder == KIJ)) {
@@ -568,19 +570,19 @@ void iterate_mid_loop(std::any any) {
       if (ISDYNAMICI) {
         dynamicupdatei();
       }
-      LoopQueue.push({reinitialize_inner});
+      schedule(reinitialize_inner);
       return;
     } else {
       TI += iii;
       if (ISDYNAMICI) {
         dynamicupdatei();
       }
-      LoopQueue.push({iterate_outer_loop});
+      schedule(iterate_outer_loop);
       return;
     }
   }
 
-  LoopQueue.push({iterate_outer_loop});
+  schedule(iterate_outer_loop);
   return;
 }
 
@@ -592,14 +594,14 @@ void iterate_outer_loop(std::any any) {
       if (ISDYNAMICK) {
         dynamicupdatek();
       }
-      LoopQueue.push({reinitialize_mid});
+      schedule(reinitialize_mid);
       return;
     } else {
       TK += ((ISDYNAMICK) ? dynk : kkk);
       if (ISDYNAMICK) {
         dynamicupdatek();
       }
-      LoopQueue.push({finishRun});
+      schedule(finishRun);
       return;
     }
   } else if ((interorder == JIK) || (interorder == JKI)) {
@@ -609,14 +611,14 @@ void iterate_outer_loop(std::any any) {
       if (ISDYNAMICJ) {
         dynamicupdatej();
       }
-      LoopQueue.push({reinitialize_mid});
+      schedule(reinitialize_mid);
       return;
     } else {
       TJ += ((ISDYNAMICJ) ? dynj : jjj);
       if (ISDYNAMICJ) {
         dynamicupdatej();
       }
-      LoopQueue.push({finishRun});
+      schedule(finishRun);
       return;
     }
   } else if ((interorder == IJK) || (interorder == IKJ)) {
@@ -626,19 +628,19 @@ void iterate_outer_loop(std::any any) {
       if (ISDYNAMICI) {
         dynamicupdatei();
       }
-      LoopQueue.push({reinitialize_mid});
+      schedule(reinitialize_mid);
       return;
     } else {
       TI += iii;
       if (ISDYNAMICI) {
         dynamicupdatei();
       }
-      LoopQueue.push({finishRun});
+      schedule(finishRun);
       return;
     }
   }
 
-  LoopQueue.push({finishRun});
+  schedule(finishRun);
   return;
 }
 
@@ -739,7 +741,7 @@ void reinitialize_inner(std::any any) {
   } else if ((interorder == JKI) || (interorder == KJI)) {
     reverse_I();
   }
-  LoopQueue.push({inner_loop_before_calculate});
+  schedule(inner_loop_before_calculate);
 }
 
 void reinitialize_mid(std::any any) {
@@ -750,7 +752,7 @@ void reinitialize_mid(std::any any) {
   } else if ((interorder == JIK) || (interorder == KIJ)) {
     reverse_I();
   }
-  LoopQueue.push({reinitialize_inner});
+  schedule(reinitialize_inner);
 }
 
 void reinitialize_outer() {
@@ -1848,7 +1850,16 @@ void updateCAccess(int ii) {
   }
 }
 
-void get_B_fibers(int ii) {
+// pran: cache lookup for one B fiber, done when a PE asks for it. * HBMbandwidthperPE turns cycles into words
+FiberAccess accessFiberGust(int fiber, int row) {
+  long long dramBefore = computeB, sramBefore = computeSramAccess;
+  get_B_fiber(fiber, row);
+  return {(computeB - dramBefore) * HBMbandwidthperPE, computeSramAccess - sramBefore};
+}
+
+// pran: was get_B_fibers. finds the B fibers a row needs and what A and C cost, without the cache lookups
+RowInfo startRowGust(int ii) {
+  RowInfo info;
   if (dataflow == Gust) {
     int tmpj = beginA[ii];
     int maxj = offsetarrayA[ii + 1] - offsetarrayA[ii];
@@ -1862,7 +1873,7 @@ void get_B_fibers(int ii) {
       // coordinate of required B fiber
       int jj = A[ii][tmpj];
 
-      get_B_fiber(jj, ii);
+      info.fibers.push_back(jj);
 
       computePE += currsizeB[jj];
       elements_processed_since_last_adjustment += currsizeB[jj];
@@ -1875,6 +1886,8 @@ void get_B_fibers(int ii) {
         break;
       }
     }
+
+    long long aDramBefore = computeA, aSramBefore = computeSramAccess;
 
     // update A access
     if (consistent_A()) {
@@ -1939,9 +1952,16 @@ void get_B_fibers(int ii) {
       }
     }
 
+    info.aDramWords = (computeA - aDramBefore) * HBMbandwidthperPE;
+    info.aSramCycles = computeSramAccess - aSramBefore;
+    long long cDramBefore = computeC;
+
     // update C access
     updateCAccess(ii);
+
+    info.cDramWords = (computeC - cDramBefore) * HBMbandwidthperPE;
   }
+  return info;
 }
 
 // prefetchSize: the size of the buffer allocated for prefetch
@@ -2351,21 +2371,21 @@ void calculate(std::any any) {
   computePE = computeDramAccess = computeSramAccess = 0;
 
   if (dataflow == Gust) {
-    LoopQueue.push({calculateGust});
+    schedule(calculateGust);
     return;
   }
 
   if (dataflow == Inner) {
-    LoopQueue.push({calculateInner});
+    schedule(calculateInner);
     return;
   }
 
   if (dataflow == Outer) {
-    LoopQueue.push({calculateOuter});
+    schedule(calculateOuter);
     return;
   }
 
-  LoopQueue.push({finishCalculate});
+  schedule(finishCalculate);
 }
 
 void calculateGust(std::any any) {
@@ -2392,11 +2412,11 @@ void calculateGust(std::any any) {
       }
     }
 
-    LoopQueue.push({prefetchPrefillWindowGust});
+    schedule(prefetchPrefillWindowGust);
     return;
   }
 
-  LoopQueue.push({getBFibersGust, 0});
+  schedule(startTileGust);
 }
 
 void calculateInner(std::any any) {
@@ -2489,7 +2509,7 @@ void calculateInner(std::any any) {
     AccessByte += cnow * 3;
   }
 
-  LoopQueue.push({finishCalculate});
+  schedule(finishCalculate);
 }
 
 void calculateOuter(std::any any) {
@@ -2551,19 +2571,23 @@ void calculateOuter(std::any any) {
     }
   }
 
-  LoopQueue.push({finishCalculate});
+  schedule(finishCalculate);
 }
 
 void finishCalculate(std::any any) {
-  totalCycle += max(computePE / PEcnt, max(computeDramAccess / PEcnt,
-                                           computeSramAccess / sramBank));
-  calCycle += max(computePE / PEcnt,
-                  max(computeDramAccess / PEcnt, computeSramAccess / sramBank));
+  // old timing: whole tile = slowest of compute / dram / sram, everything perfectly overlapped
+  long long oldTileCycles = max(computePE / PEcnt, max(computeDramAccess / PEcnt,
+                                                       computeSramAccess / sramBank));
+  totalCycle += oldTileCycles;
+  calCycle += oldTileCycles;
 
   totalSram += computeSramAccess / sramBank;
   totalDram += computeDramAccess / PEcnt;
   totalPE += computePE / PEcnt;
-  LoopQueue.push({inner_loop_after_calculate});
+
+  // pran: gust already moved the clock with PE events, inner/outer still take the old tile time
+  long long delay = (dataflow == Gust) ? 0 : oldTileCycles;
+  schedule(inner_loop_after_calculate, {}, delay);
 }
 
 void prefetchPrefillWindowGust(std::any any) {
@@ -2578,32 +2602,20 @@ void prefetchPrefillWindowGust(std::any any) {
     }
   }
 
-  LoopQueue.push({getBFibersGust, 0});
+  schedule(startTileGust);
 }
 
-void getBFibersGust(std::any any) {
-  int ii = std::any_cast<int>(any);
-  if (ii >= iii || TI + ii > I) {
-    LoopQueue.push({finishCalculate});
-    return;
-  }
-
-  get_B_fibers(TI + ii);
-
+// same prefetch window update as before: after row ii is used, prefetch more rows of A
+void slidePrefetchWindowGust(int ii) {
   int needsize = currsizeA[TI + ii] * 3;
   if (prefetchNow > needsize) {
     prefetchNow -= needsize;
   }
 
   if (prefetchNow >= prefetchSize) {
-    LoopQueue.push({getBFibersGust, ii + 1});
-  } else {
-    LoopQueue.push({prefetchNextRowGust, ii});
+    return;
   }
-}
 
-void prefetchNextRowGust(std::any any) {
-  int ii = std::any_cast<int>(any);
   while (prefetchRowNow < TI + iii) {
     if (!prefetchrow(prefetchRowNow)) {
       break;
@@ -2617,8 +2629,6 @@ void prefetchNextRowGust(std::any any) {
       elements_processed_since_last_adjustment = 0;
     }
   }
-
-  LoopQueue.push({getBFibersGust, ii + 1});
 }
 
 void post_calculate_store() {
@@ -2778,16 +2788,18 @@ void postTileMerge() {
 
 // run now simply iterates though the loop until it is empty.
 // It is the job of the loop elements to add new items to the queue as the simulator runs.
-// Currently, the loop elements update a global time themselves.
-// This should be changed so each element does not directly update global time but tags
-// itself with how long it will take to run (service time).
-// Then, in this run loop we will update the global clock based on how long it takes each elemnt to run
-// and in what order they run.
+// Each element runs 'delay' cycles after it's scheduled, and the clock (simTime) jumps to it.
 void run() {
-  LoopQueue.push({initialize});
+  simTime = 0;
+  initPEs();
+  initMemory();
+
+  schedule(initialize);
+  // pran: always run the earliest event. many can be waiting at once, so PEs overlap
   while (!LoopQueue.empty()) {
-    QueueEntry entry = LoopQueue.front();
+    QueueEntry entry = LoopQueue.top();
     LoopQueue.pop();
+    simTime = entry.time;
     entry.queueFunc(entry.args);
   }
 }
@@ -2815,7 +2827,7 @@ void initialize(std::any any) {
   // reinitialize**: TI/TJ/TK to 0;  put beginA/B to 0
   reinitialize_outer();
 
-  LoopQueue.push({reinitialize_mid});
+  schedule(reinitialize_mid);
 }
 
 void inner_loop_before_calculate(std::any any) {
@@ -2831,11 +2843,14 @@ void inner_loop_before_calculate(std::any any) {
   // forcebeginA();
   // forcebeginB();
 
+  long long loadBefore = preCycle;
   pre_calculate_load();
 
   updateBlockA();
   updateBlockB();
-  LoopQueue.push({calculate});
+
+  // pran: loading before the tile has no events yet, so just wait the old load time
+  schedule(calculate, {}, preCycle - loadBefore);
 }
 
 void inner_loop_after_calculate(std::any any) {
@@ -2851,13 +2866,21 @@ void inner_loop_after_calculate(std::any any) {
   // Tcnt10, Tcnt11 to udpate _TI/_TJ/_TK
 
   update_T();
-  LoopQueue.push({iterate_inner_loop});
+  schedule(iterate_inner_loop);
 }
 
 void finishRun(std::any any) {
+  long long mergeBefore = postCycle;
   postTileMerge();
 
   analyze_statistics();
+
+  // pran: the final merge has no events yet either, so add the old merge time at the end
+  long long total = simTime + (postCycle - mergeBefore);
+  printf("\n***** event timing *****\n");
+  printf("event total cycle = %lld\n", total);
+  printPEStats(total);
+  printMemoryStats(total);
 }
 
 void runTile(bool isest, int iii, int jjj, int kkk, long long tti,

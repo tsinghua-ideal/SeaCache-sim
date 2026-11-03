@@ -8,11 +8,27 @@
 struct QueueEntry {
     void (*queueFunc)(std::any);
     std::any args;
+    long long time;   // cycle when this event happens
+    long long order;  // events at the same cycle run in the order they were added
 };
 
-// Basic queue used for global execution
+// earliest event first. if two events are at the same cycle, the one added first goes first
+struct EventOrder {
+    bool operator()(const QueueEntry &a, const QueueEntry &b) const {
+        if (a.time != b.time) return a.time > b.time;
+        return a.order > b.order;
+    }
+};
+
+// Basic queue used for global execution, always gives back the earliest event
 // TODO: Split into several queues representing the different elements
-extern std::queue<QueueEntry> LoopQueue;
+extern std::priority_queue<QueueEntry, std::vector<QueueEntry>, EventOrder> LoopQueue;
+
+// current simulation time in cycles. it jumps to the time of each event as it runs
+extern long long simTime;
+
+// add an event that happens 'delay' cycles from now (0 = at the current cycle)
+void schedule(void (*func)(std::any), std::any args = {}, long long delay = 0);
 
 /*
 
@@ -46,8 +62,6 @@ void finishCalculate(std::any any);
 // Gust Dataflow Functions
 void calculateGust(std::any any);
 void prefetchPrefillWindowGust(std::any any);
-void getBFibersGust(std::any any);
-void prefetchNextRowGust(std::any any);
 
 // Inner Dataflow Functions - TODO: make more granular
 void calculateInner(std::any any);
