@@ -3,6 +3,7 @@
 
 #include <any>
 #include <queue>
+#include <vector>
 
 struct QueueEntry {
     void (*queueFunc)(std::any);
@@ -53,5 +54,55 @@ void calculateInner(std::any any);
 
 // Outer Dataflow Functions - TODO: make more granular
 void calculateOuter(std::any any);
+
+enum QueueEntryStatus {
+    WAITING,
+    RUNNING,
+    COMPLETED,
+    EMPTY
+};
+
+struct BaseQueueEntry {
+    int id;
+    QueueEntryStatus status;
+    int requestID;
+};
+
+enum MemReadType {
+    A_PREFETCH,
+    B_GET,
+    C_GET,
+    WRITEBACK
+};
+
+struct DRAMQueueEntry : BaseQueueEntry { 
+    long long address;
+    MemReadType type;
+};
+
+// Prefill with all of A at start of program
+struct PrefetchQueueEntry : BaseQueueEntry {
+    long long aIndex;
+    long long fiberID;
+    long long address; 
+};
+
+struct CacheMissQueueEntry : BaseQueueEntry {
+    long long address;
+    long long fiberID;
+};
+
+struct OpsWaitingOnMemoryQueueEntry : BaseQueueEntry { 
+    long long bAddress;
+    long long bFiberID;
+    long long cAddress;
+    long long cFiberID;
+};
+
+struct OpsWaitingOnPEsQueueEntry : BaseQueueEntry {
+};
+
+struct WritebackQueueEntry : BaseQueueEntry { 
+};
 
 #endif // QUEUE_H
