@@ -9,7 +9,7 @@ extern long long preDramAccess, preSramAccess;
 
 extern long long computeDramAccess, computeSramAccess, computePE;
 
-// Hari: added for per-PE idle-time tracking, does not affect existing counters
+// Hari: added for per-PE idle-time tracking (design gap work), does not affect existing counters
 extern long long perPEWork[128];
 extern long long Abandwidth, Bbandwidth, Cbandwidth, computebandwidth;
 

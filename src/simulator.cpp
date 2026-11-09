@@ -1865,6 +1865,7 @@ void get_B_fibers(int ii) {
       get_B_fiber(jj, ii);
 
       computePE += currsizeB[jj];
+      perPEWork[ii % PEcnt] += currsizeB[jj]; // Hari: track work per physical PE (round-robin)
       elements_processed_since_last_adjustment += currsizeB[jj];
 
       update_c_fiber(jj);
@@ -2518,6 +2519,7 @@ void calculateOuter(std::any any) {
       int jj = A[ii][tmpj];
 
       computePE += currsizeB[jj];
+      perPEWork[ii % PEcnt] += currsizeB[jj]; // Hari: track work per physical PE (round-robin)
 
       update_c_fiber(jj);
 
