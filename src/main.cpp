@@ -3,6 +3,7 @@
 #include "headers.h"
 #include "json.hpp"
 #include "simulator.h"
+#include "memory.h"
 #include <fstream>
 
 using json = nlohmann::json;
@@ -37,6 +38,9 @@ int main(int argc, char *argv[]) {
   HBMbandwidthperPE = HBMbandwidth / PEcnt;
   int tmpbank = config["srambank"].get<int>();
   sramBank = tmpbank;
+  // event timing settings, defaults are used if they're not in the config file
+  dramChannels = config.value("dramChannels", 4);
+  dramLatency = config.value("dramLatency", 100);
   ISCACHE = 1;
   int baselinetest = config["baselinetest"].get<int>();
   bool condensedOP = config["condensedOP"].get<bool>();
