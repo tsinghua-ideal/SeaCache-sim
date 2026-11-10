@@ -2,6 +2,7 @@
 #include "headers.h"
 #include "memory.h"
 #include "queue.h"
+#include "statistics.h"
 
 #include <deque>
 
@@ -111,6 +112,7 @@ void peMultiplyNext(std::any any) {
 
   peStallB[pe] += simTime - p.waitStart;
   peBusy[pe] += currsizeB[fiber];
+  perPEWork[pe] += currsizeB[fiber];
   p.multiplying = true;
   schedule(peMultiplyDone, pe, currsizeB[fiber]); // 1 multiply per cycle
 }

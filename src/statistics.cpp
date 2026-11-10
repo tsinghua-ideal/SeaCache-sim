@@ -2,6 +2,7 @@
 #include "headers.h"
 
 long long totalCycle;
+long long perPEWork[128]; // Hari: added for per-PE idle-time tracking
 long long preCycle, calCycle, postCycle;
 long long minCycle = 1LL << 60;
 
