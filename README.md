@@ -4,7 +4,7 @@ This is the source code repository of the MICRO'25 paper *SeaCache: Efficient an
 ## Build
 
 ```bash
-$ g++ -std=c++17 -O3 -march=native src/config.cpp src/data.cpp src/estimation.cpp src/parameters.cpp src/util.cpp src/statistics.cpp src/cache.cpp src/dynamic.cpp src/simulator.cpp src/queue.cpp src/memory.cpp src/pe.cpp src/main.cpp -o scache
+$ g++ -std=c++17 -O3 -march=native src/config.cpp src/data.cpp src/estimation.cpp src/parameters.cpp src/util.cpp src/statistics.cpp src/cache.cpp src/dynamic.cpp src/simulator.cpp src/queue.cpp src/memory.cpp src/pe.cpp src/prefetch.cpp src/main.cpp -o scache
 ```
 
 ## Workload

@@ -3,6 +3,8 @@
 
 extern int cachesize;
 extern int prefetchSize;
+extern int prefetchNow, prefetchRowNow;
+bool prefetchrow(int ii);
 extern bool adaptive_prefetch;
 
 extern int minBlock;
@@ -23,6 +25,7 @@ int getjbound();
 int getibound();
 
 extern int currsizeB[MAXN];
+extern int currsizeA[MAXN];
 extern int currsizeBc[MAXN];
 extern int beginB[MAXN];
 

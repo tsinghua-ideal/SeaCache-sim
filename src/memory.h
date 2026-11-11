@@ -11,8 +11,9 @@ enum RequestType { A_ROW, B_FIBER, C_ROW };
 struct DRAMRequest {
   RequestType type;
   int id; // row of A / C, or which B fiber
-  int pe; // PE waiting for it (-1 if none)
   double words;
+  bool endOfTile;
+  long long requestInitTime;
 };
 
 void initMemory();

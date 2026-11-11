@@ -6,6 +6,7 @@
 #include "statistics.h"
 #include "memory.h"
 #include "pe.h"
+#include "prefetch.h"
 
 // store all the buffered C now
 set<int> bufferedC[MAXN];
@@ -1422,7 +1423,7 @@ void pre_load_B() {
   // scenario 2: mismatch
 
   // mismatch of the Gust and Inner have been considered in scenario 1
-  if ((dataflow == Outer)) {
+  if (dataflow == Outer) {
 
     Bsizenow = 0;
     fulltagB = 0;
@@ -2413,11 +2414,9 @@ void calculateGust(std::any any) {
       }
     }
 
-    schedule(prefetchPrefillWindowGust);
-    return;
   }
 
-  schedule(startTileGust);
+  initPrefetch();
 }
 
 void calculateInner(std::any any) {
@@ -2603,8 +2602,6 @@ void prefetchPrefillWindowGust(std::any any) {
       break;
     }
   }
-
-  schedule(startTileGust);
 }
 
 // same prefetch window update as before: after row ii is used, prefetch more rows of A
@@ -2768,7 +2765,7 @@ void postTileMerge() {
   }
 
   // calculate the inter-cost of outer
-  if ((dataflow == Outer)) {
+  if (dataflow == Outer) {
 
     for (int ii = 0; ii < I; ii++) {
 

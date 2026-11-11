@@ -15,18 +15,20 @@ void slidePrefetchWindowGust(int ii);
 
 // one B fiber a PE asks for
 struct FiberArgs {
-  int pe, row, fiber;
+  int row, fiber; double cDramWords; long long requestInitTime;
+};
+struct PEArgs {
+  FiberArgs fiberArgs; int pe;
 };
 
 void initPEs();
+bool peReady(int pe);
+
+extern long long stallA, stallB, stallC;
 
 // events
-void startTileGust(std::any any);
 void peTakeRow(std::any any);
-void peAReady(std::any any);
 void peFiberReady(std::any any);
-void peMultiplyNext(std::any any);
-void peMultiplyDone(std::any any);
 void peRowDone(std::any any);
 
 void printPEStats(long long totalCycles);

@@ -1,6 +1,7 @@
 #include "memory.h"
 #include "config.h"
 #include "pe.h"
+#include "prefetch.h"
 #include "queue.h"
 
 #include <algorithm>
@@ -71,12 +72,14 @@ void channelFree(std::any any) {
 void dramArrive(std::any any) {
   DRAMRequest req = std::any_cast<DRAMRequest>(any);
   if (req.type == A_ROW) {
-    schedule(peAReady, req.pe);
+    schedule(fiberAReady, FiberArgs{req.id, -1, 0, req.requestInitTime});
   } else if (req.type == B_FIBER) {
     for (FiberArgs waiting : waitingForFiber[req.id]) {
-      schedule(peFiberReady, waiting);
+      schedule(fiberBReady, waiting);
     }
     waitingForFiber.erase(req.id);
+  } else if (req.type == C_ROW) {
+    schedule(fiberCDone, req);
   }
 }
 
@@ -93,10 +96,10 @@ void requestFiber(std::any any) {
   } else if (access.dramWords > 0) {
     waitingForFiber[args.fiber] = {args};
     misses++;
-    schedule(sendToDRAM, DRAMRequest{B_FIBER, args.fiber, args.pe, access.dramWords});
+    schedule(sendToDRAM, DRAMRequest{B_FIBER, args.fiber, access.dramWords});
   } else {
     hits++;
-    schedule(peFiberReady, args, access.sramCycles);
+    schedule(fiberBReady, args, access.sramCycles);
   }
 }
 
